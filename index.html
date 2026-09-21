@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d0f14">
+<title>ΜΠΙΛΙΑΡΔΟ PRO — Ο Δάσκαλος</title>
+<meta name="description" content="Ολοκληρωμένος offline προπονητής μπιλιάρδου για όλα τα είδη: pool, snooker, καραμπόλα. Από αρχάριος σε επαγγελματία.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Μπιλιάρδο PRO">
+<link rel="stylesheet" href="styles.css?v=3">
+</head>
+<body>
+<div id="app">
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="brand-logo">🎱</div>
+      <div class="brand-text">
+        <div class="brand-title">ΜΠΙΛΙΑΡΔΟ<span>PRO</span></div>
+        <div class="brand-sub">Ο Δάσκαλος</div>
+      </div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <div class="lvl-badge" id="sideLevel">Επίπεδο: —</div>
+      <div class="progress-mini"><div class="progress-mini-bar" id="sideProgress"></div></div>
+      <div class="side-foot-note" id="sideProgressTxt">0% ολοκληρωμένο</div>
+    </div>
+  </aside>
+
+  <!-- Mobile top bar -->
+  <header id="topbar">
+    <button id="menuBtn" aria-label="Μενού">☰</button>
+    <div class="topbar-title">ΜΠΙΛΙΑΡΔΟ <b>PRO</b></div>
+    <div class="topbar-lvl" id="topLevel">—</div>
+  </header>
+
+  <main id="main"></main>
+</div>
+
+<div id="overlay"></div>
+
+<script src="data.js?v=3"></script>
+<script src="game.js?v=3"></script>
+<script src="app.js?v=3"></script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+}
+</script>
+</body>
+</html>
