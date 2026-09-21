@@ -25,6 +25,28 @@ function applyTheme(){
   rs.setProperty('--theme-color', a);
 }
 
+/* ---------- PWA install ---------- */
+const UA=navigator.userAgent||"";
+const IS_IOS=/iphone|ipad|ipod/i.test(UA) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+const IS_ANDROID=/android/i.test(UA);
+function isStandalone(){ try{ return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true; }catch(e){ return false; } }
+function installSteps(){
+  if(IS_IOS) return `<div class="note gold"><b>📱 iPhone / iPad — ΜΟΝΟ με Safari:</b><ol style="margin:6px 0 0;padding-left:20px">
+    <li>Άνοιξε αυτή τη σελίδα στον <b>Safari</b> (η εγκατάσταση ΔΕΝ δουλεύει σε Chrome στο iPhone).</li>
+    <li>Πάτα το κουμπί <b>Μοιρασμού</b> (τετράγωνο με βελάκι προς τα πάνω ⬆︎, στην κάτω ή πάνω μπάρα).</li>
+    <li>Κύλησε και διάλεξε <b>«Προσθήκη στην Αρχική οθόνη»</b> → «Προσθήκη».</li></ol></div>`;
+  if(IS_ANDROID) return `<div class="note gold"><b>🤖 Android (Chrome):</b><ol style="margin:6px 0 0;padding-left:20px">
+    <li>Πάτα το κουμπί <b>«📲 Εγκατάσταση»</b> πιο πάνω.</li>
+    <li>Αν δεν ανοίξει παράθυρο, πάτα το μενού <b>⋮</b> (πάνω δεξιά στο Chrome) → <b>«Εγκατάσταση εφαρμογής»</b> ή «Προσθήκη στην αρχική οθόνη».</li></ol></div>`;
+  return `<div class="note gold"><b>💻 Υπολογιστής (Chrome/Edge):</b> πάτα το εικονίδιο <b>εγκατάστασης ⊕</b> στη δεξιά άκρη της μπάρας διεύθυνσης, ή μενού ⋮ → «Install / Εγκατάσταση».</div>`;
+}
+function installApp(){
+  if(window.__bip){ window.__bip.prompt(); if(window.__bip.userChoice) window.__bip.userChoice.then(()=>{window.__bip=null;}).catch(()=>{}); }
+  else if(IS_IOS){ toast("iPhone: άνοιξε σε Safari → Μοιρασμός → Προσθήκη στην αρχική οθόνη"); }
+  else { toast("Μενού browser (⋮) → «Εγκατάσταση εφαρμογής»"); }
+}
+window.__installApp=installApp;
+
 const allLessons = () => Object.values(D.lessons).flat();
 const totalLessons = allLessons().length;
 const doneCount = () => store.done.length;
@@ -93,6 +115,13 @@ routes.home=()=>{
   const drillsDone=Object.keys(store.drills).length;
   const roadIdx = Math.min(Math.floor(pct()/ (100/D.roadmap.length)), D.roadmap.length-1);
   return `
+  ${isStandalone()? '' : `
+  <div class="card" style="border:1px solid var(--red);background:linear-gradient(180deg,var(--red-soft),var(--bg2))">
+    <h3>📲 Εγκατάσταση στη συσκευή <span class="tag">PWA</span></h3>
+    <p>Πρόσθεσε το <b>ΜΠΙΛΙΑΡΔΟ PRO</b> στην αρχική οθόνη και άνοιξέ το σαν κανονική εφαρμογή — δουλεύει και <b>offline</b>, χωρίς μπάρα browser.</p>
+    <button class="btn" id="installBtn" onclick="__installApp()">📲 Εγκατάσταση εφαρμογής</button>
+    <div style="margin-top:12px">${installSteps()}</div>
+  </div>`}
   <div class="hero">
     <div class="page-eyebrow">Ο προσωπικός σου δάσκαλος</div>
     <h1>Γίνε επαγγελματίας παίκτης μπιλιάρδου 🎱</h1>

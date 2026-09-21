@@ -13,7 +13,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Μπιλιάρδο PRO">
-<link rel="stylesheet" href="styles.css?v=3">
+<script>
+  window.__bip=null;
+  window.addEventListener('beforeinstallprompt',function(e){ e.preventDefault(); window.__bip=e;
+    try{ document.documentElement.classList.add('can-install'); if(window.__onInstallable) window.__onInstallable(); }catch(_){} });
+  window.addEventListener('appinstalled',function(){ window.__bip=null; try{ document.documentElement.classList.remove('can-install'); }catch(_){} });
+</script>
+<link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body>
 <div id="app">
@@ -46,9 +52,9 @@
 
 <div id="overlay"></div>
 
-<script src="data.js?v=3"></script>
-<script src="game.js?v=3"></script>
-<script src="app.js?v=3"></script>
+<script src="data.js?v=4"></script>
+<script src="game.js?v=4"></script>
+<script src="app.js?v=4"></script>
 <script>
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });

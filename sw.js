@@ -1,12 +1,12 @@
 /* ΜΠΙΛΙΑΡΔΟ PRO — Service Worker (offline cache) */
-const CACHE = 'biliardo-pro-v3';
+const CACHE = 'biliardo-pro-v4';
 const ASSETS = [
   './',
   './index.html',
-  './styles.css?v=3',
-  './data.js?v=3',
-  './game.js?v=3',
-  './app.js?v=3',
+  './styles.css?v=4',
+  './data.js?v=4',
+  './game.js?v=4',
+  './app.js?v=4',
   './manifest.webmanifest',
   './icon-192.png',
   './icon-512.png',
@@ -25,19 +25,22 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// cache-first, με fallback στο δίκτυο· ενημερώνει το cache στο παρασκήνιο
+// HTML/navigation: network-first (πάντα φρέσκο) · assets: cache-first (γρήγορο/offline)
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  const req = e.request;
+  const isNav = req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html');
+  if (isNav) {
+    e.respondWith(
+      fetch(req).then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); return res; })
+        .catch(() => caches.match(req).then(r => r || caches.match('./index.html')))
+    );
+    return;
+  }
   e.respondWith(
-    caches.match(e.request).then(cached => {
-      const fetchP = fetch(e.request).then(res => {
-        if (res && res.status === 200 && res.type === 'basic') {
-          const copy = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, copy));
-        }
-        return res;
-      }).catch(() => cached);
-      return cached || fetchP;
-    })
+    caches.match(req).then(cached => cached || fetch(req).then(res => {
+      if (res && res.status === 200 && res.type === 'basic') { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
+      return res;
+    }))
   );
 });
