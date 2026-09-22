@@ -526,17 +526,19 @@ function _dBall(b){
   const R=13, c=b.c||'#f2b34b';
   let s='';
   if(b.ghost) s+=`<circle cx="${b.ghost.x}" cy="${b.ghost.y}" r="${R}" fill="rgba(255,255,255,.12)" stroke="#fff" stroke-width="1.3" stroke-dasharray="3 3"/>`;
+  s+=`<g data-x="${b.x}" data-y="${b.y}">`;
   s+=`<circle cx="${b.x}" cy="${b.y}" r="${R}" fill="${c}" stroke="rgba(0,0,0,.4)" stroke-width="1"/>`;
   if(b.n!=null){ s+=`<circle cx="${b.x}" cy="${b.y}" r="${R*0.55}" fill="#fff"/><text x="${b.x}" y="${b.y+3.6}" font-size="11" font-weight="bold" fill="#141414" text-anchor="middle">${b.n}</text>`; }
   s+=`<circle cx="${b.x-4}" cy="${b.y-4}" r="3.1" fill="rgba(255,255,255,.55)"/>`;
   if(b.spin) s+=`<circle cx="${b.x+b.spin.x*R*0.55}" cy="${b.y+b.spin.y*R*0.55}" r="3" fill="#e63946" stroke="#fff" stroke-width="1"/>`;
+  s+=`</g>`;
   return s;
 }
 function svgTable(spec){
   const T={x0:44,y0:44,x1:756,y1:396}, W=T.x1-T.x0, Hh=T.y1-T.y0;
   const pockets = spec.pockets!==false;
   const felt = (typeof store!=='undefined' && store.felt) ? store.felt : '#12508a';
-  let s=`<svg viewBox="0 0 800 440" style="width:100%;height:auto;border-radius:8px;display:block">`;
+  let s=`<svg viewBox="0 0 800 440" data-spec="${encodeURIComponent(JSON.stringify(spec))}" style="width:100%;height:auto;border-radius:8px;display:block">`;
   s+=`<rect x="8" y="8" width="784" height="424" rx="16" fill="#6b4a2b"/>`;
   s+=`<rect x="${T.x0-14}" y="${T.y0-14}" width="${W+28}" height="${Hh+28}" rx="6" fill="rgba(0,0,0,.35)"/>`;
   s+=`<rect x="${T.x0}" y="${T.y0}" width="${W}" height="${Hh}" fill="${felt}"/>`;
@@ -557,10 +559,65 @@ function gameDiagHTML(id){
   const arr=(D.gameDiagrams||{})[id]; if(!arr||!arr.length) return '';
   return `<div style="display:flex;flex-direction:column;gap:12px">${arr.map(d=>`
     <div class="table-box" style="padding:8px">
-      ${svgTable(d.spec)}
+      <div class="diag-wrap" style="position:relative">
+        ${svgTable(d.spec)}
+        <button class="diag-play" onclick="__playDiagram(this)">▶ Play</button>
+      </div>
       <div class="small" style="margin-top:6px;text-align:center;line-height:1.35">${d.cap}</div>
     </div>`).join('')}</div>`;
 }
+
+/* ---------- Animation διαγραμμάτων ---------- */
+const SVGNS='http://www.w3.org/2000/svg';
+function _near(x1,y1,x2,y2){ return Math.hypot(x1-x2,y1-y2)<24; }
+function _plen(pts){ let t=0; for(let i=0;i<pts.length-1;i++) t+=Math.hypot(pts[i+1].x-pts[i].x,pts[i+1].y-pts[i].y); return t; }
+function _moveBall(svg,color,path,dur,hideSel){
+  return new Promise(res=>{
+    const orig = hideSel? svg.querySelector(hideSel):null; if(orig) orig.style.opacity='0';
+    const R=13;
+    const m=document.createElementNS(SVGNS,'circle'); m.setAttribute('r',R); m.setAttribute('fill',color); m.setAttribute('stroke','rgba(0,0,0,.4)'); m.setAttribute('stroke-width','1');
+    const hl=document.createElementNS(SVGNS,'circle'); hl.setAttribute('r','3.1'); hl.setAttribute('fill','rgba(255,255,255,.55)');
+    svg.appendChild(m); svg.appendChild(hl);
+    const segs=[]; let total=0;
+    for(let i=0;i<path.length-1;i++){ const d=Math.hypot(path[i+1].x-path[i].x,path[i+1].y-path[i].y); segs.push({a:path[i],b:path[i+1],d}); total+=d; }
+    total=total||1; let t0=null;
+    function frame(ts){ if(t0===null)t0=ts; const tr=Math.min(total,(ts-t0)/dur*total);
+      let acc=0,pos=path[path.length-1];
+      for(const s of segs){ if(tr<=acc+s.d){ const f=s.d?(tr-acc)/s.d:0; pos={x:s.a.x+(s.b.x-s.a.x)*f,y:s.a.y+(s.b.y-s.a.y)*f}; break; } acc+=s.d; }
+      m.setAttribute('cx',pos.x); m.setAttribute('cy',pos.y); hl.setAttribute('cx',pos.x-4); hl.setAttribute('cy',pos.y-4);
+      if(tr<total) requestAnimationFrame(frame); else res({m,hl,orig});
+    }
+    requestAnimationFrame(frame);
+  });
+}
+async function __playDiagram(btn){
+  const svg=btn.parentElement.querySelector('svg'); if(!svg||svg.__play) return;
+  let spec; try{ spec=JSON.parse(decodeURIComponent(svg.dataset.spec)); }catch(e){ return; }
+  svg.__play=true; btn.disabled=true; const old=btn.textContent; btn.textContent='● …';
+  const made=[];
+  try{
+    const arrows=(spec.arrows||[]).map(a=>Object.assign({},a));
+    const used=arrows.map(()=>false);
+    const cue=(spec.balls||[]).find(b=>b.c==='#fff')||spec.cue;
+    if(cue){
+      const pts=[{x:cue.x,y:cue.y}]; let cur={x:cue.x,y:cue.y}, go=true;
+      while(go){ go=false; for(let i=0;i<arrows.length;i++){ if(used[i])continue; const a=arrows[i];
+        if(_near(a.x1,a.y1,cur.x,cur.y)){ pts.push({x:a.x2,y:a.y2}); cur={x:a.x2,y:a.y2}; used[i]=true; go=true; break; } } }
+      if(pts.length>1){ const dur=Math.max(600,_plen(pts)/0.55);
+        made.push(await _moveBall(svg,'#fff',pts,dur,`g[data-x="${cue.x}"][data-y="${cue.y}"]`)); }
+    }
+    for(let i=0;i<arrows.length;i++){ if(used[i])continue; const a=arrows[i];
+      if(a.head===false||a.c==='#3ec98a') continue;
+      const ball=(spec.balls||[]).find(b=>_near(b.x,b.y,a.x1,a.y1)); if(!ball) continue;
+      const path=[{x:a.x1,y:a.y1},{x:a.x2,y:a.y2}]; const dur=Math.max(400,_plen(path)/0.55);
+      made.push(await _moveBall(svg,ball.c,path,dur,`g[data-x="${ball.x}"][data-y="${ball.y}"]`)); used[i]=true;
+    }
+    await new Promise(r=>setTimeout(r,650));
+  }catch(e){}
+  made.forEach(o=>{ if(o.m)o.m.remove(); if(o.hl)o.hl.remove(); if(o.orig)o.orig.style.opacity='1'; });
+  svg.__play=false; btn.disabled=false; btn.textContent=old;
+}
+window.__playDiagram=__playDiagram;
 
 /* ---------- Helpers: YouTube links & ανά-παιχνίδι extra ---------- */
 function ytLink(q){ return 'https://www.youtube.com/results?search_query='+encodeURIComponent(q); }

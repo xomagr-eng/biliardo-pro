@@ -234,6 +234,12 @@ table.rules td:first-child{color:var(--txt);font-weight:700;white-space:nowrap}
   opacity:0;transition:.3s;z-index:200;font-weight:600;font-size:14px}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+.diag-wrap{position:relative}
+.diag-play{position:absolute;right:14px;bottom:12px;background:var(--red);color:#fff;border:none;
+  padding:7px 14px;border-radius:20px;font-weight:800;font-size:12.5px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.5);transition:.15s}
+.diag-play:hover{background:var(--red-dk)}
+.diag-play:disabled{opacity:.6;cursor:default}
+
 .swatches{display:flex;flex-wrap:wrap;gap:11px}
 .swatch{width:46px;height:46px;border-radius:11px;border:2px solid var(--line2);cursor:pointer;position:relative;transition:transform .12s}
 .swatch:hover{transform:scale(1.08)}
