@@ -512,19 +512,74 @@ routes.systems=()=>`
     <button class="btn" onclick="__go('drills')">🏋️ Ασκήσεις Συστημάτων</button>
   </div>`;
 
+/* ---------- Διαγράμματα (εικονογραφημένα βήματα) ---------- */
+function _arrow(a){
+  const c=a.c||'#fff', w=a.w||2.6, dash=a.dash?`stroke-dasharray="${a.dash}"`:'';
+  let s=`<line x1="${a.x1}" y1="${a.y1}" x2="${a.x2}" y2="${a.y2}" stroke="${c}" stroke-width="${w}" ${dash} stroke-linecap="round"/>`;
+  if(a.head!==false){ const ang=Math.atan2(a.y2-a.y1,a.x2-a.x1), L=12, ww=6;
+    const p1x=a.x2-L*Math.cos(ang)+ww*Math.cos(ang+Math.PI/2), p1y=a.y2-L*Math.sin(ang)+ww*Math.sin(ang+Math.PI/2);
+    const p2x=a.x2-L*Math.cos(ang)+ww*Math.cos(ang-Math.PI/2), p2y=a.y2-L*Math.sin(ang)+ww*Math.sin(ang-Math.PI/2);
+    s+=`<polygon points="${a.x2},${a.y2} ${p1x},${p1y} ${p2x},${p2y}" fill="${c}"/>`; }
+  return s;
+}
+function _dBall(b){
+  const R=13, c=b.c||'#f2b34b';
+  let s='';
+  if(b.ghost) s+=`<circle cx="${b.ghost.x}" cy="${b.ghost.y}" r="${R}" fill="rgba(255,255,255,.12)" stroke="#fff" stroke-width="1.3" stroke-dasharray="3 3"/>`;
+  s+=`<circle cx="${b.x}" cy="${b.y}" r="${R}" fill="${c}" stroke="rgba(0,0,0,.4)" stroke-width="1"/>`;
+  if(b.n!=null){ s+=`<circle cx="${b.x}" cy="${b.y}" r="${R*0.55}" fill="#fff"/><text x="${b.x}" y="${b.y+3.6}" font-size="11" font-weight="bold" fill="#141414" text-anchor="middle">${b.n}</text>`; }
+  s+=`<circle cx="${b.x-4}" cy="${b.y-4}" r="3.1" fill="rgba(255,255,255,.55)"/>`;
+  if(b.spin) s+=`<circle cx="${b.x+b.spin.x*R*0.55}" cy="${b.y+b.spin.y*R*0.55}" r="3" fill="#e63946" stroke="#fff" stroke-width="1"/>`;
+  return s;
+}
+function svgTable(spec){
+  const T={x0:44,y0:44,x1:756,y1:396}, W=T.x1-T.x0, Hh=T.y1-T.y0;
+  const pockets = spec.pockets!==false;
+  const felt = (typeof store!=='undefined' && store.felt) ? store.felt : '#12508a';
+  let s=`<svg viewBox="0 0 800 440" style="width:100%;height:auto;border-radius:8px;display:block">`;
+  s+=`<rect x="8" y="8" width="784" height="424" rx="16" fill="#6b4a2b"/>`;
+  s+=`<rect x="${T.x0-14}" y="${T.y0-14}" width="${W+28}" height="${Hh+28}" rx="6" fill="rgba(0,0,0,.35)"/>`;
+  s+=`<rect x="${T.x0}" y="${T.y0}" width="${W}" height="${Hh}" fill="${felt}"/>`;
+  for(let i=1;i<8;i++){const x=T.x0+W*i/8; s+=`<circle cx="${x}" cy="${T.y0-8}" r="2" fill="#e8d9b5"/><circle cx="${x}" cy="${T.y1+8}" r="2" fill="#e8d9b5"/>`;}
+  for(let i=1;i<4;i++){const y=T.y0+Hh*i/4; s+=`<circle cx="${T.x0-8}" cy="${y}" r="2" fill="#e8d9b5"/><circle cx="${T.x1+8}" cy="${y}" r="2" fill="#e8d9b5"/>`;}
+  if(spec.baulk){ const bx=T.x0+W*0.20; s+=`<line x1="${bx}" y1="${T.y0}" x2="${bx}" y2="${T.y1}" stroke="rgba(255,255,255,.3)" stroke-width="1.2"/><path d="M ${bx} ${220-52} A 52 52 0 0 0 ${bx} ${220+52}" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.2"/>`; }
+  const pk={tl:{x:T.x0,y:T.y0},tr:{x:T.x1,y:T.y0},bl:{x:T.x0,y:T.y1},br:{x:T.x1,y:T.y1},tc:{x:(T.x0+T.x1)/2,y:T.y0},bc:{x:(T.x0+T.x1)/2,y:T.y1}};
+  if(pockets) Object.values(pk).forEach(p=>s+=`<circle cx="${p.x}" cy="${p.y}" r="15" fill="#05070a"/>`);
+  (spec.targets||[]).forEach(k=>{const p=pk[k]; if(p) s+=`<circle cx="${p.x}" cy="${p.y}" r="19" fill="none" stroke="#e63946" stroke-width="2.4" stroke-dasharray="4 3"/>`;});
+  (spec.arrows||[]).forEach(a=>s+=_arrow(a));
+  (spec.balls||[]).forEach(b=>s+=_dBall(b));
+  (spec.labels||[]).forEach(l=>{ if(l.circle) s+=`<circle cx="${l.x}" cy="${l.y}" r="9" fill="${l.c||'#e63946'}"/>`;
+    s+=`<text x="${l.x}" y="${l.y+(l.circle?3.5:0)}" font-size="${l.size||12}" font-weight="bold" fill="${l.circle?'#fff':(l.c||'#fff')}" text-anchor="middle">${l.t}</text>`; });
+  s+=`</svg>`;
+  return s;
+}
+function gameDiagHTML(id){
+  const arr=(D.gameDiagrams||{})[id]; if(!arr||!arr.length) return '';
+  return `<div style="display:flex;flex-direction:column;gap:12px">${arr.map(d=>`
+    <div class="table-box" style="padding:8px">
+      ${svgTable(d.spec)}
+      <div class="small" style="margin-top:6px;text-align:center;line-height:1.35">${d.cap}</div>
+    </div>`).join('')}</div>`;
+}
+
 /* ---------- Helpers: YouTube links & ανά-παιχνίδι extra ---------- */
 function ytLink(q){ return 'https://www.youtube.com/results?search_query='+encodeURIComponent(q); }
 function videoBtns(vids){ return (vids||[]).map(v=>`<a class="btn ghost sm" href="${ytLink(v[1])}" target="_blank" rel="noopener" style="margin:0 6px 6px 0">▶ ${v[0]}</a>`).join(''); }
 function gameExtraHTML(id){
   const e=(D.gameExtra||{})[id]; if(!e) return '';
-  return `
-    ${e.steps?`<h4 style="margin:14px 0 6px;font-size:14px;color:var(--gold)">📋 Βήμα-βήμα: πώς να παίξεις</h4>
-      <ol style="color:var(--txt-dim)">${e.steps.map(s=>`<li>${s}</li>`).join('')}</ol>`:''}
-    ${e.tricks?`<h4 style="margin:14px 0 6px;font-size:14px;color:var(--red)">🎩 Μυστικά κόλπα</h4>
-      <ul style="color:var(--txt-dim)">${e.tricks.map(s=>`<li>${s}</li>`).join('')}</ul>`:''}
-    ${e.videos?`<h4 style="margin:14px 0 6px;font-size:14px">🎬 Εκπαιδευτικά βίντεο</h4>
-      <div>${videoBtns(e.videos)}</div>
-      <div class="small" style="margin-top:6px">Ανοίγουν σε YouTube (χρειάζεται σύνδεση).</div>`:''}`;
+  let out='';
+  if(e.steps){
+    const ol=`<ol style="color:var(--txt-dim);margin:0">${e.steps.map(s=>`<li style="margin-bottom:7px">${s}</li>`).join('')}</ol>`;
+    const diag=gameDiagHTML(id);
+    out+=`<h4 style="margin:14px 0 8px;font-size:14px;color:var(--gold)">📋 Βήμα-βήμα: πώς να παίξεις</h4>`;
+    out+= diag ? `<div class="grid g2" style="align-items:start;gap:16px">${ol}<div>${diag}</div></div>` : ol;
+  }
+  if(e.tricks){ out+=`<h4 style="margin:16px 0 6px;font-size:14px;color:var(--red)">🎩 Μυστικά κόλπα</h4>
+    <ul style="color:var(--txt-dim)">${e.tricks.map(s=>`<li>${s}</li>`).join('')}</ul>`; }
+  if(e.videos){ out+=`<h4 style="margin:16px 0 6px;font-size:14px">🎬 Εκπαιδευτικά βίντεο</h4>
+    <div>${videoBtns(e.videos)}</div>
+    <div class="small" style="margin-top:6px">Ανοίγουν σε YouTube (χρειάζεται σύνδεση).</div>`; }
+  return out;
 }
 
 /* ======================================================= */
