@@ -6,7 +6,7 @@ const LS = "billiardpro_v1";
 /* ---------- State ---------- */
 let store = load();
 function load(){
-  const def={done:[],drills:{},metro:60,glo:"",puzzles:[],aiWins:0,accent:"#e63946",felt:"#12508a"};
+  const def={done:[],drills:{},metro:60,glo:"",puzzles:[],aiWins:0,accent:"#e63946",felt:"#12508a",diagSpeed:1,diagSound:true};
   try{ return Object.assign(def, JSON.parse(localStorage.getItem(LS)||"{}")); }
   catch(e){ return def; }
 }
@@ -567,25 +567,45 @@ function gameDiagHTML(id){
     </div>`).join('')}</div>`;
 }
 
-/* ---------- Animation διαγραμμάτων ---------- */
+/* ---------- Animation διαγραμμάτων (με ήχο & ταχύτητα) ---------- */
 const SVGNS='http://www.w3.org/2000/svg';
 function _near(x1,y1,x2,y2){ return Math.hypot(x1-x2,y1-y2)<24; }
 function _plen(pts){ let t=0; for(let i=0;i<pts.length-1;i++) t+=Math.hypot(pts[i+1].x-pts[i].x,pts[i+1].y-pts[i].y); return t; }
-function _moveBall(svg,color,path,dur,hideSel){
+/* ---- Web Audio: ήχοι μπιλιάρδου ---- */
+let _actx=null;
+function _audio(){ try{ if(!_actx) _actx=new (window.AudioContext||window.webkitAudioContext)(); if(_actx.state==='suspended') _actx.resume(); }catch(e){} return _actx; }
+function _click(freq,dur,vol){
+  const a=_audio(); if(!a) return; const t=a.currentTime;
+  const g=a.createGain(); g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); g.connect(a.destination);
+  const o=a.createOscillator(); o.type='triangle'; o.frequency.setValueAtTime(freq,t); o.frequency.exponentialRampToValueAtTime(Math.max(60,freq*0.55),t+dur); o.connect(g); o.start(t); o.stop(t+dur);
+  try{ const n=Math.floor(a.sampleRate*dur), buf=a.createBuffer(1,n,a.sampleRate), d=buf.getChannelData(0);
+    for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/n,3);
+    const ns=a.createBufferSource(); ns.buffer=buf; const ng=a.createGain(); ng.gain.value=vol*0.6; ns.connect(ng); ng.connect(a.destination); ns.start(t); ns.stop(t+dur);
+  }catch(e){}
+}
+function _diagSound(type){
+  if(type==='hit') _click(280,0.09,0.30);        // χτύπημα στέκας
+  else if(type==='cushion') _click(160,0.11,0.24); // μπάντα
+  else if(type==='ball') _click(880,0.06,0.32);    // σύγκρουση μπαλών
+  else if(type==='pocket') _click(130,0.20,0.28);  // μπάλα στην τσέπη
+}
+function _moveBall(svg,color,path,dur,hideSel,cbs){
+  cbs=cbs||{};
   return new Promise(res=>{
     const orig = hideSel? svg.querySelector(hideSel):null; if(orig) orig.style.opacity='0';
     const R=13;
     const m=document.createElementNS(SVGNS,'circle'); m.setAttribute('r',R); m.setAttribute('fill',color); m.setAttribute('stroke','rgba(0,0,0,.4)'); m.setAttribute('stroke-width','1');
     const hl=document.createElementNS(SVGNS,'circle'); hl.setAttribute('r','3.1'); hl.setAttribute('fill','rgba(255,255,255,.55)');
     svg.appendChild(m); svg.appendChild(hl);
-    const segs=[]; let total=0;
-    for(let i=0;i<path.length-1;i++){ const d=Math.hypot(path[i+1].x-path[i].x,path[i+1].y-path[i].y); segs.push({a:path[i],b:path[i+1],d}); total+=d; }
-    total=total||1; let t0=null;
+    const segs=[]; let total=0; const bounds=[];
+    for(let i=0;i<path.length-1;i++){ const d=Math.hypot(path[i+1].x-path[i].x,path[i+1].y-path[i].y); segs.push({a:path[i],b:path[i+1],d}); total+=d; bounds.push(total); }
+    total=total||1; let t0=null, wpi=0; if(cbs.onStart) cbs.onStart();
     function frame(ts){ if(t0===null)t0=ts; const tr=Math.min(total,(ts-t0)/dur*total);
+      while(wpi<bounds.length-1 && tr>=bounds[wpi]){ if(cbs.onWaypoint) cbs.onWaypoint(wpi); wpi++; }
       let acc=0,pos=path[path.length-1];
       for(const s of segs){ if(tr<=acc+s.d){ const f=s.d?(tr-acc)/s.d:0; pos={x:s.a.x+(s.b.x-s.a.x)*f,y:s.a.y+(s.b.y-s.a.y)*f}; break; } acc+=s.d; }
       m.setAttribute('cx',pos.x); m.setAttribute('cy',pos.y); hl.setAttribute('cx',pos.x-4); hl.setAttribute('cy',pos.y-4);
-      if(tr<total) requestAnimationFrame(frame); else res({m,hl,orig});
+      if(tr<total) requestAnimationFrame(frame); else { if(cbs.onEnd) cbs.onEnd(); res({m,hl,orig}); }
     }
     requestAnimationFrame(frame);
   });
@@ -593,6 +613,9 @@ function _moveBall(svg,color,path,dur,hideSel){
 async function __playDiagram(btn){
   const svg=btn.parentElement.querySelector('svg'); if(!svg||svg.__play) return;
   let spec; try{ spec=JSON.parse(decodeURIComponent(svg.dataset.spec)); }catch(e){ return; }
+  const speed=(typeof store!=='undefined'&&store.diagSpeed)||1;
+  const snd=(typeof store==='undefined')||store.diagSound!==false;
+  const S=t=>{ if(snd) _diagSound(t); };
   svg.__play=true; btn.disabled=true; const old=btn.textContent; btn.textContent='● …';
   const made=[];
   try{
@@ -603,16 +626,20 @@ async function __playDiagram(btn){
       const pts=[{x:cue.x,y:cue.y}]; let cur={x:cue.x,y:cue.y}, go=true;
       while(go){ go=false; for(let i=0;i<arrows.length;i++){ if(used[i])continue; const a=arrows[i];
         if(_near(a.x1,a.y1,cur.x,cur.y)){ pts.push({x:a.x2,y:a.y2}); cur={x:a.x2,y:a.y2}; used[i]=true; go=true; break; } } }
-      if(pts.length>1){ const dur=Math.max(600,_plen(pts)/0.55);
-        made.push(await _moveBall(svg,'#fff',pts,dur,`g[data-x="${cue.x}"][data-y="${cue.y}"]`)); }
+      if(pts.length>1){ const dur=Math.max(600,_plen(pts)/0.55)/speed;
+        const endPt=pts[pts.length-1];
+        const hitsBall=(spec.balls||[]).some(b=> b!==cue && (_near(b.x,b.y,endPt.x,endPt.y)||(b.ghost&&_near(b.ghost.x,b.ghost.y,endPt.x,endPt.y))));
+        made.push(await _moveBall(svg,'#fff',pts,dur,`g[data-x="${cue.x}"][data-y="${cue.y}"]`,{
+          onStart:()=>S('hit'), onWaypoint:()=>S('cushion'), onEnd:()=>S(hitsBall?'ball':'cushion')
+        })); }
     }
     for(let i=0;i<arrows.length;i++){ if(used[i])continue; const a=arrows[i];
       if(a.head===false||a.c==='#3ec98a') continue;
       const ball=(spec.balls||[]).find(b=>_near(b.x,b.y,a.x1,a.y1)); if(!ball) continue;
-      const path=[{x:a.x1,y:a.y1},{x:a.x2,y:a.y2}]; const dur=Math.max(400,_plen(path)/0.55);
-      made.push(await _moveBall(svg,ball.c,path,dur,`g[data-x="${ball.x}"][data-y="${ball.y}"]`)); used[i]=true;
+      const path=[{x:a.x1,y:a.y1},{x:a.x2,y:a.y2}]; const dur=Math.max(400,_plen(path)/0.55)/speed;
+      made.push(await _moveBall(svg,ball.c,path,dur,`g[data-x="${ball.x}"][data-y="${ball.y}"]`,{ onEnd:()=>S('pocket') })); used[i]=true;
     }
-    await new Promise(r=>setTimeout(r,650));
+    await new Promise(r=>setTimeout(r,650/speed));
   }catch(e){}
   made.forEach(o=>{ if(o.m)o.m.remove(); if(o.hl)o.hl.remove(); if(o.orig)o.orig.style.opacity='1'; });
   svg.__play=false; btn.disabled=false; btn.textContent=old;
@@ -653,12 +680,28 @@ routes.games=()=>{
   <div class="subtabs" id="famTabs">
     ${fams.map((f,i)=>`<button data-f="${i}" class="${i===0?'on':''}">${f}</button>`).join('')}
   </div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
+    <span class="small" style="font-weight:700">🎬 Animation διαγραμμάτων:</span>
+    <button class="btn ghost sm" id="soundToggle">${store.diagSound!==false?'🔊 Ήχος: ΝΑΙ':'🔇 Ήχος: ΟΧΙ'}</button>
+    <div class="seg" style="margin:0;max-width:240px">
+      <button data-sp="0.5" class="${store.diagSpeed===0.5?'on':''}">🐢 0.5×</button>
+      <button data-sp="1" class="${(store.diagSpeed||1)===1?'on':''}">1×</button>
+      <button data-sp="2" class="${store.diagSpeed===2?'on':''}">⚡ 2×</button>
+    </div>
+  </div>
   <div id="gamesBody"></div>`;
 };
 afterRender.games=()=>{
   const fams=[...new Set(D.games.map(g=>g.fam))];
   const tabs=document.getElementById('famTabs');
   const body=document.getElementById('gamesBody');
+  const soundBtn=document.getElementById('soundToggle');
+  soundBtn.onclick=()=>{ store.diagSound=(store.diagSound===false); save();
+    soundBtn.textContent=store.diagSound!==false?'🔊 Ήχος: ΝΑΙ':'🔇 Ήχος: ΟΧΙ';
+    if(store.diagSound!==false){ try{ _diagSound('ball'); }catch(e){} } };
+  main.querySelectorAll('[data-sp]').forEach(b=>b.onclick=()=>{
+    store.diagSpeed=parseFloat(b.dataset.sp); save();
+    main.querySelectorAll('[data-sp]').forEach(x=>x.classList.toggle('on', x===b)); });
   function renderFam(i){
     const f=fams[i];
     body.innerHTML=D.games.filter(g=>g.fam===f).map(g=>`
