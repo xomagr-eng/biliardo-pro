@@ -27,6 +27,17 @@ function lighten(hex,amt){ const c=_hex(hex); if(!c)return hex; amt=amt==null?0.
   return `rgb(${Math.min(255,Math.round(c.r+255*amt))},${Math.min(255,Math.round(c.g+255*amt))},${Math.min(255,Math.round(c.b+255*amt))})`; }
 function darken(hex,amt){ const c=_hex(hex); if(!c)return hex; amt=amt==null?0.3:amt;
   return `rgb(${Math.round(c.r*(1-amt))},${Math.round(c.g*(1-amt))},${Math.round(c.b*(1-amt))})`; }
+/* ---- Web Audio: ήχοι παιχνιδιού ---- */
+let _gactx=null;
+function _gaudio(){ try{ if(!_gactx) _gactx=new (window.AudioContext||window.webkitAudioContext)(); if(_gactx.state==='suspended') _gactx.resume(); }catch(e){} return _gactx; }
+function _gclick(freq,dur,vol){ const a=_gaudio(); if(!a) return; const t=a.currentTime;
+  const g=a.createGain(); g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); g.connect(a.destination);
+  const o=a.createOscillator(); o.type='triangle'; o.frequency.setValueAtTime(freq,t); o.frequency.exponentialRampToValueAtTime(Math.max(60,freq*0.55),t+dur); o.connect(g); o.start(t); o.stop(t+dur);
+  try{ const n=Math.floor(a.sampleRate*dur), buf=a.createBuffer(1,n,a.sampleRate), d=buf.getChannelData(0);
+    for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/n,3);
+    const ns=a.createBufferSource(); ns.buffer=buf; const ng=a.createGain(); ng.gain.value=vol*0.6; ns.connect(ng); ng.connect(a.destination); ns.start(t); ns.stop(t+dur);
+  }catch(e){}
+}
 
 /* ---------- Homography (για 3D perspective, offline) ---------- */
 function solveH(src,dst){
@@ -145,7 +156,18 @@ function Game(canvas, ui, opts){
   const self=this;
   this.mode=opts.mode; this.diff=opts.diff||'med'; this.view=opts.view||'2d';
   this.felt=opts.felt||"#12508a";
+  this.sound=opts.sound!==false;
   this.onEnd=opts.onEnd||function(){};
+  let effects=[], _sfxN=0;
+  function sfx(type,speed){
+    if(!self.sound) return;
+    if(type==='ball'||type==='cushion'){ if(speed!=null&&speed<0.7) return; if(_sfxN>7) return; _sfxN++; }
+    const vol = speed!=null? clamp(speed/26,0.06,0.4) : 0.32;
+    if(type==='hit') _gclick(280,0.09,0.34);
+    else if(type==='cushion') _gclick(150,0.09,vol);
+    else if(type==='ball') _gclick(900,0.05,vol);
+    else if(type==='pocket') _gclick(120,0.22,0.30);
+  }
   let balls=[], state='aim', turn=0, ballInHand=false, msg="";
   let aim={angle:Math.PI,power:0,dragging:false,spin:{x:0,y:0}};
   // per-shot tracking
@@ -166,6 +188,7 @@ function Game(canvas, ui, opts){
 
   this.setView=function(v){ self.view=v; };
   this.setFelt=function(c){ self.felt=c; };
+  this.setSound=function(b){ self.sound=!!b; };
 
   this.reset=function(){
     if(self.mode==='9ball') balls=rack9();
@@ -176,6 +199,7 @@ function Game(canvas, ui, opts){
     turn=0; ballInHand=false; state='aim'; groups={0:null,1:null}; scores=[0,0];
     snState={expect:'red',phase:'reds'};
     aim={angle:Math.PI,power:0,dragging:false,spin:{x:0,y:0}};
+    effects=[]; _sfxN=0;
     msg=startMsg();
     updateUI();
   };
@@ -190,6 +214,7 @@ function Game(canvas, ui, opts){
   /* ---------- physics ---------- */
   function anyMoving(){ return balls.some(b=>b.active&&(Math.abs(b.vx)>STOP||Math.abs(b.vy)>STOP)); }
   function step(){
+    _sfxN=0;
     for(let s=0;s<SUB;s++){
       for(const b of balls){ if(b.active){ b.x+=b.vx/SUB; b.y+=b.vy/SUB; } }
       for(let i=0;i<balls.length;i++){ if(!balls[i].active) continue;
@@ -213,6 +238,7 @@ function Game(canvas, ui, opts){
     if(isCue){ preSpeed=Math.hypot(shotCue.vx,shotCue.vy); if(preSpeed>0.001) preDir={x:shotCue.vx/preSpeed,y:shotCue.vy/preSpeed}; }
     const imp=-vn*0.98;
     a.vx-=imp*nx; a.vy-=imp*ny; b.vx+=imp*nx; b.vy+=imp*ny;
+    sfx('ball', Math.abs(vn));
     if(isCue){
       const o=a===shotCue?b:a;
       if(firstHit===null){ firstHit=o.n; firstHitBall=o; }
@@ -232,6 +258,7 @@ function Game(canvas, ui, opts){
     if(b.y<Tp+BR){ b.y=Tp+BR; b.vy=Math.abs(b.vy)*CUSH; hit=hit||3; }
     else if(b.y>Bt-BR){ b.y=Bt-BR; b.vy=-Math.abs(b.vy)*CUSH; hit=hit||4; }
     if(hit){
+      sfx('cushion', Math.hypot(b.vx,b.vy));
       if(firstHit!==null) railAfter=true;
       if(b===shotCue){ cueCushions++;
         // πλάγιο φάλτσο: αλλάζει τη γωνία ανάκλασης (running/reverse english)
@@ -248,6 +275,7 @@ function Game(canvas, ui, opts){
       for(const p of POCKETS){ if(dist(b,p)<POCKET){
         b.active=false; b.pocketed=true; b.vx=b.vy=0;
         if(b.n===0 && b.kind!=='cue2') cueScratch=true; else potted.push(b);
+        sfx('pocket'); effects.push({x:p.x,y:p.y,t:performance.now(),col:b.color});
       } }
     }
   }
@@ -266,6 +294,7 @@ function Game(canvas, ui, opts){
     beginShot();
     shotCue.sF=follow; shotCue.sS=side;
     shotCue.vx=Math.cos(a2)*power; shotCue.vy=Math.sin(a2)*power;
+    sfx('hit');
     state='sim'; msg = turn===0?"...":"Ο αντίπαλος παίζει...";
     aim.spin={x:0,y:0}; if(ui.onSpinReset) ui.onSpinReset();
     updateUI();
@@ -531,6 +560,12 @@ function Game(canvas, ui, opts){
     if((self.mode==='9ball')&&state!=='over'){ const lo=lowestBall(); if(lo) ring(lo,"#e63946"); }
     if(self.mode==='8ball'&&groups[0]&&state!=='over'){ balls.filter(b=>b.active&&groupOf(b.n)===groups[0]).forEach(b=>ring(b,"#e63946")); }
     if(self.mode==='snooker'&&state!=='over'){ aiCandForHi().forEach(b=>ring(b,"#e63946")); }
+    // εφέ όταν μπαίνει μπάλα (δαχτυλίδι που σβήνει)
+    if(effects.length){ const now=performance.now(); effects=effects.filter(e=>now-e.t<450);
+      for(const e of effects){ const age=(now-e.t)/450, c=P(e.x,e.y,0), s=scaleAt(e.x,e.y), r=s.rx*(1+age*1.7);
+        ctx.strokeStyle=`rgba(255,255,255,${0.6*(1-age)})`; ctx.lineWidth=2.6;
+        ctx.beginPath(); ctx.ellipse(c.x,c.y,r,r*(self.view==='3d'?0.7:1),0,0,7); ctx.stroke();
+      } }
   }
   function aiCandForHi(){ if(snState.phase==='reds'&&snState.expect==='red') return balls.filter(b=>b.kind==='red'&&b.active);
     if(snState.expect==='colour') return balls.filter(b=>b.snook&&b.kind!=='red'&&b.active);

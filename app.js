@@ -6,7 +6,7 @@ const LS = "billiardpro_v1";
 /* ---------- State ---------- */
 let store = load();
 function load(){
-  const def={done:[],drills:{},metro:60,glo:"",puzzles:[],aiWins:0,accent:"#e63946",felt:"#12508a",diagSpeed:1,diagSound:true};
+  const def={done:[],drills:{},metro:60,glo:"",puzzles:[],aiWins:0,accent:"#e63946",felt:"#12508a",diagSpeed:1,diagSound:true,gameSound:true};
   try{ return Object.assign(def, JSON.parse(localStorage.getItem(LS)||"{}")); }
   catch(e){ return def; }
 }
@@ -1089,6 +1089,7 @@ routes.play=()=>{
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
         <span id="scoreBox" class="pill gold" style="align-self:center;display:none"></span>
         <span id="turnBadge" class="pill" style="align-self:center">—</span>
+        <button class="btn ghost" id="gameSoundBtn" title="Ήχος παιχνιδιού">${store.gameSound!==false?'🔊':'🔇'}</button>
         <button class="btn" id="newGameBtn">🔄 Νέο</button>
       </div>
     </div>
@@ -1146,7 +1147,7 @@ afterRender.play=()=>{
   spinFace.addEventListener('pointerdown',e=>{ spinFace.setPointerCapture(e.pointerId); setSpinFromEvent(e); });
   spinFace.addEventListener('pointermove',e=>{ if(e.buttons) setSpinFromEvent(e); });
   function start(){
-    window.startPoolGame(canvas, ui, {mode:playOpts.mode, diff:playOpts.diff, view:playOpts.view, felt:store.felt,
+    window.startPoolGame(canvas, ui, {mode:playOpts.mode, diff:playOpts.diff, view:playOpts.view, felt:store.felt, sound:store.gameSound!==false,
       onEnd:(winner)=>{ if(winner===0){ store.aiWins=(store.aiWins||0)+1; save(); updateSideProgress(); toast("🏆 Νίκη κατά του AI καταγράφηκε!"); } }
     });
   }
@@ -1158,6 +1159,9 @@ afterRender.play=()=>{
     if(window.__poolInst) window.__poolInst.setView(playOpts.view);   // αλλαγή χωρίς reset παιχνιδιού
   });
   document.getElementById('newGameBtn').onclick=start;
+  const gsb=document.getElementById('gameSoundBtn');
+  if(gsb) gsb.onclick=()=>{ store.gameSound=(store.gameSound===false); save(); gsb.textContent=store.gameSound!==false?'🔊':'🔇';
+    if(window.__poolInst) window.__poolInst.setSound(store.gameSound!==false); };
   document.getElementById('shootBtn').onclick=()=>{ if(window.__poolInst&&window.__poolInst.canShoot()) window.__poolInst.shootSlider(+document.getElementById('powerSlider').value); };
   start();
 };
