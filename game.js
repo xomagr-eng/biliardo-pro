@@ -157,16 +157,17 @@ function Game(canvas, ui, opts){
   this.mode=opts.mode; this.diff=opts.diff||'med'; this.view=opts.view||'2d';
   this.felt=opts.felt||"#12508a";
   this.sound=opts.sound!==false;
+  this.sfxVol=(typeof opts.sfxVol==='number')?opts.sfxVol:0.85;
   this.onEnd=opts.onEnd||function(){};
   let effects=[], _sfxN=0;
   function sfx(type,speed){
-    if(!self.sound) return;
+    if(!self.sound) return; const V=self.sfxVol; if(V<=0.002) return;
     if(type==='ball'||type==='cushion'){ if(speed!=null&&speed<0.7) return; if(_sfxN>7) return; _sfxN++; }
-    const vol = speed!=null? clamp(speed/26,0.06,0.4) : 0.32;
-    if(type==='hit') _gclick(280,0.09,0.34);
+    const vol = (speed!=null? clamp(speed/26,0.06,0.4) : 0.32)*V;
+    if(type==='hit') _gclick(280,0.09,0.34*V);
     else if(type==='cushion') _gclick(150,0.09,vol);
     else if(type==='ball') _gclick(900,0.05,vol);
-    else if(type==='pocket') _gclick(120,0.22,0.30);
+    else if(type==='pocket') _gclick(120,0.22,0.30*V);
   }
   let balls=[], state='aim', turn=0, ballInHand=false, msg="";
   let aim={angle:Math.PI,power:0,dragging:false,spin:{x:0,y:0}};
@@ -189,6 +190,7 @@ function Game(canvas, ui, opts){
   this.setView=function(v){ self.view=v; };
   this.setFelt=function(c){ self.felt=c; };
   this.setSound=function(b){ self.sound=!!b; };
+  this.setSfxVol=function(v){ self.sfxVol=Math.max(0,Math.min(1,v)); };
 
   this.reset=function(){
     if(self.mode==='9ball') balls=rack9();

@@ -6,7 +6,7 @@ const LS = "billiardpro_v1";
 /* ---------- State ---------- */
 let store = load();
 function load(){
-  const def={done:[],drills:{},metro:60,glo:"",puzzles:[],aiWins:0,accent:"#e63946",felt:"#12508a",diagSpeed:1,diagSound:true,gameSound:true,music:false};
+  const def={done:[],drills:{},metro:60,glo:"",puzzles:[],aiWins:0,accent:"#e63946",felt:"#12508a",diagSpeed:1,diagSound:true,gameSound:true,music:false,volMusic:0.6,volSfx:0.85};
   try{ return Object.assign(def, JSON.parse(localStorage.getItem(LS)||"{}")); }
   catch(e){ return def; }
 }
@@ -27,7 +27,7 @@ function applyTheme(){
 
 /* ---------- Μουσική υπόκρουση (procedural lounge, Web Audio) ---------- */
 const Music=(function(){
-  let ctx=null, master=null, timer=null, step=0, playing=false;
+  let ctx=null, master=null, timer=null, step=0, playing=false, vol=0.6;
   const CHORD=3.2;
   // I – vi – ii – V σε ντο ματζόρε (τζαζ, χαλαρό)
   const prog=[[60,64,67,71],[57,60,64,67],[62,65,69,72],[55,59,62,65]];
@@ -52,14 +52,16 @@ const Music=(function(){
   }
   return {
     start(){ if(!ensure()||playing) return; playing=true; master.gain.cancelScheduledValues(ctx.currentTime);
-      master.gain.setValueAtTime(master.gain.value,ctx.currentTime); master.gain.linearRampToValueAtTime(0.7,ctx.currentTime+1.2);
+      master.gain.setValueAtTime(master.gain.value,ctx.currentTime); master.gain.linearRampToValueAtTime(vol,ctx.currentTime+1.2);
       tick(); timer=setInterval(tick,CHORD*1000); },
     stop(){ playing=false; if(timer){ clearInterval(timer); timer=null; }
       if(ctx&&master){ master.gain.cancelScheduledValues(ctx.currentTime); master.gain.setValueAtTime(master.gain.value,ctx.currentTime); master.gain.linearRampToValueAtTime(0,ctx.currentTime+0.6); } },
+    setVolume(v){ vol=Math.max(0,Math.min(1,v)); if(playing&&ctx&&master){ master.gain.cancelScheduledValues(ctx.currentTime); master.gain.setValueAtTime(master.gain.value,ctx.currentTime); master.gain.linearRampToValueAtTime(vol,ctx.currentTime+0.3); } },
     playing(){ return playing; }
   };
 })();
 function setupMusic(){
+  Music.setVolume(typeof store.volMusic==='number'?store.volMusic:0.6);
   const btn=document.getElementById('musicBtn'); if(!btn) return;
   const upd=()=>{ btn.textContent = store.music? '🎵 Μουσική: ON' : '🎵 Μουσική: OFF'; btn.classList.toggle('on', !!store.music); };
   btn.onclick=()=>{ if(store.music){ Music.stop(); store.music=false; } else { Music.start(); store.music=true; } save(); upd(); };
@@ -618,6 +620,7 @@ function _plen(pts){ let t=0; for(let i=0;i<pts.length-1;i++) t+=Math.hypot(pts[
 let _actx=null;
 function _audio(){ try{ if(!_actx) _actx=new (window.AudioContext||window.webkitAudioContext)(); if(_actx.state==='suspended') _actx.resume(); }catch(e){} return _actx; }
 function _click(freq,dur,vol){
+  const sv=(typeof store!=='undefined'&&typeof store.volSfx==='number')?store.volSfx:0.85; vol=vol*sv; if(vol<=0.002) return;
   const a=_audio(); if(!a) return; const t=a.currentTime;
   const g=a.createGain(); g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); g.connect(a.destination);
   const o=a.createOscillator(); o.type='triangle'; o.frequency.setValueAtTime(freq,t); o.frequency.exponentialRampToValueAtTime(Math.max(60,freq*0.55),t+dur); o.connect(g); o.start(t); o.stop(t+dur);
@@ -1190,7 +1193,7 @@ afterRender.play=()=>{
   spinFace.addEventListener('pointerdown',e=>{ spinFace.setPointerCapture(e.pointerId); setSpinFromEvent(e); });
   spinFace.addEventListener('pointermove',e=>{ if(e.buttons) setSpinFromEvent(e); });
   function start(){
-    window.startPoolGame(canvas, ui, {mode:playOpts.mode, diff:playOpts.diff, view:playOpts.view, felt:store.felt, sound:store.gameSound!==false,
+    window.startPoolGame(canvas, ui, {mode:playOpts.mode, diff:playOpts.diff, view:playOpts.view, felt:store.felt, sound:store.gameSound!==false, sfxVol:store.volSfx,
       onEnd:(winner)=>{ if(winner===0){ store.aiWins=(store.aiWins||0)+1; save(); updateSideProgress(); toast("🏆 Νίκη κατά του AI καταγράφηκε!"); } }
     });
   }
@@ -1331,8 +1334,8 @@ function puzzleTitle(id){ const p=D.puzzles.find(x=>x.id===id); return p?p.t:id;
 routes.theme=()=>`
   <div class="page-head">
     <div class="page-eyebrow">Προσαρμογή</div>
-    <div class="page-title">🎨 Εμφάνιση & Χρώματα</div>
-    <div class="page-lead">Διάλεξε το χρώμα-τόνο όλης της εφαρμογής και το χρώμα της τσόχας στο διαδραστικό μπιλιάρδο. Οι επιλογές αποθηκεύονται αυτόματα.</div>
+    <div class="page-title">🎨 Εμφάνιση & Ήχος</div>
+    <div class="page-lead">Διάλεξε χρώματα (εφαρμογής & τσόχας) και ρύθμισε την ένταση μουσικής & εφέ. Οι επιλογές αποθηκεύονται αυτόματα.</div>
   </div>
   <div class="card">
     <h3>Χρώμα εργαλείου (accent)</h3>
@@ -1344,6 +1347,19 @@ routes.theme=()=>`
     <p>Το πανί του τραπεζιού στο «Παίξε vs AI» (2D & 3D).</p>
     <div class="swatches">${FELTS.map(x=>`<button class="swatch ${store.felt===x.c?'on':''}" data-felt="${x.c}" style="background:${x.c}" title="${x.n}"></button>`).join('')}</div>
     <div class="note" style="margin-top:14px">Δες το ζωντανά στο <a onclick="__go('play')">Παίξε vs AI</a>.</div>
+  </div>
+  <div class="card">
+    <h3>🔊 Ένταση Ήχου</h3>
+    <p>Ρύθμισε ξεχωριστά τη μουσική και τα εφέ (χτυπήματα, μπάντες, τσέπες).</p>
+    <div style="margin-bottom:16px">
+      <div class="small" style="margin-bottom:5px">🎵 Μουσική υπόκρουση: <b id="volMusicVal">${Math.round((store.volMusic??0.6)*100)}%</b></div>
+      <input type="range" min="0" max="100" value="${Math.round((store.volMusic??0.6)*100)}" id="volMusic" style="width:100%">
+    </div>
+    <div>
+      <div class="small" style="margin-bottom:5px">🔊 Εφέ ήχου: <b id="volSfxVal">${Math.round((store.volSfx??0.85)*100)}%</b></div>
+      <input type="range" min="0" max="100" value="${Math.round((store.volSfx??0.85)*100)}" id="volSfx" style="width:100%">
+    </div>
+    <div class="small" style="margin-top:12px">Οι διακόπτες on/off είναι: 🎵 μουσική στο κάτω μέρος του μενού, 🔊 εφέ στο «Παίξε vs AI» & στα διαγράμματα.</div>
   </div>`;
 afterRender.theme=()=>{
   main.querySelectorAll('[data-acc]').forEach(b=>b.onclick=()=>{
@@ -1354,6 +1370,12 @@ afterRender.theme=()=>{
     if(window.__poolInst) window.__poolInst.setFelt(store.felt);
     go('theme'); toast("🟦 Χρώμα τσόχας άλλαξε");
   });
+  const vm=document.getElementById('volMusic'), vs=document.getElementById('volSfx');
+  if(vm) vm.oninput=()=>{ store.volMusic=vm.value/100; save();
+    document.getElementById('volMusicVal').textContent=vm.value+'%'; Music.setVolume(store.volMusic); };
+  if(vs){ vs.oninput=()=>{ store.volSfx=vs.value/100; save();
+    document.getElementById('volSfxVal').textContent=vs.value+'%'; if(window.__poolInst) window.__poolInst.setSfxVol(store.volSfx); };
+    vs.onchange=()=>{ try{ _diagSound('ball'); }catch(e){} }; }  // δοκιμαστικός ήχος στο τέλος
 };
 
 /* ---------- Toast ---------- */
