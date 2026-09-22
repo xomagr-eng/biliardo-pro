@@ -19,7 +19,7 @@
     try{ document.documentElement.classList.add('can-install'); if(window.__onInstallable) window.__onInstallable(); }catch(_){} });
   window.addEventListener('appinstalled',function(){ window.__bip=null; try{ document.documentElement.classList.remove('can-install'); }catch(_){} });
 </script>
-<link rel="stylesheet" href="styles.css?v=9">
+<link rel="stylesheet" href="styles.css?v=10">
 </head>
 <body>
 <div id="app">
@@ -37,6 +37,7 @@
       <div class="lvl-badge" id="sideLevel">Επίπεδο: —</div>
       <div class="progress-mini"><div class="progress-mini-bar" id="sideProgress"></div></div>
       <div class="side-foot-note" id="sideProgressTxt">0% ολοκληρωμένο</div>
+      <button id="musicBtn" class="music-btn">🎵 Μουσική: OFF</button>
     </div>
   </aside>
 
@@ -52,9 +53,9 @@
 
 <div id="overlay"></div>
 
-<script src="data.js?v=9"></script>
-<script src="game.js?v=9"></script>
-<script src="app.js?v=9"></script>
+<script src="data.js?v=10"></script>
+<script src="game.js?v=10"></script>
+<script src="app.js?v=10"></script>
 <script>
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });

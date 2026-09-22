@@ -1,12 +1,12 @@
 /* ΜΠΙΛΙΑΡΔΟ PRO — Service Worker (offline cache) */
-const CACHE = 'biliardo-pro-v9';
+const CACHE = 'biliardo-pro-v10';
 const ASSETS = [
   './',
   './index.html',
-  './styles.css?v=9',
-  './data.js?v=9',
-  './game.js?v=9',
-  './app.js?v=9',
+  './styles.css?v=10',
+  './data.js?v=10',
+  './game.js?v=10',
+  './app.js?v=10',
   './manifest.webmanifest',
   './icon-192.png',
   './icon-512.png',

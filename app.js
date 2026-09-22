@@ -6,7 +6,7 @@ const LS = "billiardpro_v1";
 /* ---------- State ---------- */
 let store = load();
 function load(){
-  const def={done:[],drills:{},metro:60,glo:"",puzzles:[],aiWins:0,accent:"#e63946",felt:"#12508a",diagSpeed:1,diagSound:true,gameSound:true};
+  const def={done:[],drills:{},metro:60,glo:"",puzzles:[],aiWins:0,accent:"#e63946",felt:"#12508a",diagSpeed:1,diagSound:true,gameSound:true,music:false};
   try{ return Object.assign(def, JSON.parse(localStorage.getItem(LS)||"{}")); }
   catch(e){ return def; }
 }
@@ -23,6 +23,49 @@ function applyTheme(){
   rs.setProperty('--red-dk', darkenHex(a,0.24));
   rs.setProperty('--red-soft', `rgba(${c.r},${c.g},${c.b},.15)`);
   rs.setProperty('--theme-color', a);
+}
+
+/* ---------- Μουσική υπόκρουση (procedural lounge, Web Audio) ---------- */
+const Music=(function(){
+  let ctx=null, master=null, timer=null, step=0, playing=false;
+  const CHORD=3.2;
+  // I – vi – ii – V σε ντο ματζόρε (τζαζ, χαλαρό)
+  const prog=[[60,64,67,71],[57,60,64,67],[62,65,69,72],[55,59,62,65]];
+  const f=m=>440*Math.pow(2,(m-69)/12);
+  function ensure(){
+    if(!ctx){ try{ ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return false; }
+      master=ctx.createGain(); master.gain.value=0;
+      const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=1900; lp.Q.value=0.3;
+      master.connect(lp); lp.connect(ctx.destination); }
+    if(ctx.state==='suspended') ctx.resume();
+    return true;
+  }
+  function voice(freq,t,dur,type,vol){ const o=ctx.createOscillator(); o.type=type; o.frequency.value=freq;
+    const g=ctx.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+0.35);
+    g.gain.setValueAtTime(vol,t+dur*0.6); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t+dur+0.05); }
+  function tick(){ if(!ctx) return; const t=ctx.currentTime+0.06; const ch=prog[step%prog.length];
+    ch.forEach(m=>voice(f(m),t,CHORD*0.98,'triangle',0.045));       // pad
+    voice(f(ch[0]-12),t,CHORD*0.98,'sine',0.10);                     // bass
+    for(let i=0;i<4;i++) voice(f(ch[i%ch.length]+12),t+i*(CHORD/4),CHORD/4*0.9,'sine',0.03); // arp
+    step++;
+  }
+  return {
+    start(){ if(!ensure()||playing) return; playing=true; master.gain.cancelScheduledValues(ctx.currentTime);
+      master.gain.setValueAtTime(master.gain.value,ctx.currentTime); master.gain.linearRampToValueAtTime(0.7,ctx.currentTime+1.2);
+      tick(); timer=setInterval(tick,CHORD*1000); },
+    stop(){ playing=false; if(timer){ clearInterval(timer); timer=null; }
+      if(ctx&&master){ master.gain.cancelScheduledValues(ctx.currentTime); master.gain.setValueAtTime(master.gain.value,ctx.currentTime); master.gain.linearRampToValueAtTime(0,ctx.currentTime+0.6); } },
+    playing(){ return playing; }
+  };
+})();
+function setupMusic(){
+  const btn=document.getElementById('musicBtn'); if(!btn) return;
+  const upd=()=>{ btn.textContent = store.music? '🎵 Μουσική: ON' : '🎵 Μουσική: OFF'; btn.classList.toggle('on', !!store.music); };
+  btn.onclick=()=>{ if(store.music){ Music.stop(); store.music=false; } else { Music.start(); store.music=true; } save(); upd(); };
+  upd();
+  if(store.music){ const once=()=>{ if(store.music) Music.start(); window.removeEventListener('pointerdown',once); window.removeEventListener('keydown',once); };
+    window.addEventListener('pointerdown',once); window.addEventListener('keydown',once); }
 }
 
 /* ---------- PWA install ---------- */
@@ -1332,6 +1375,7 @@ window.__go=go;
 
 /* ---------- Init ---------- */
 applyTheme();
+setupMusic();
 buildNav();
 updateSideProgress();
 const initial=(location.hash||'').replace('#','');
