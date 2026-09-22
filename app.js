@@ -512,6 +512,21 @@ routes.systems=()=>`
     <button class="btn" onclick="__go('drills')">🏋️ Ασκήσεις Συστημάτων</button>
   </div>`;
 
+/* ---------- Helpers: YouTube links & ανά-παιχνίδι extra ---------- */
+function ytLink(q){ return 'https://www.youtube.com/results?search_query='+encodeURIComponent(q); }
+function videoBtns(vids){ return (vids||[]).map(v=>`<a class="btn ghost sm" href="${ytLink(v[1])}" target="_blank" rel="noopener" style="margin:0 6px 6px 0">▶ ${v[0]}</a>`).join(''); }
+function gameExtraHTML(id){
+  const e=(D.gameExtra||{})[id]; if(!e) return '';
+  return `
+    ${e.steps?`<h4 style="margin:14px 0 6px;font-size:14px;color:var(--gold)">📋 Βήμα-βήμα: πώς να παίξεις</h4>
+      <ol style="color:var(--txt-dim)">${e.steps.map(s=>`<li>${s}</li>`).join('')}</ol>`:''}
+    ${e.tricks?`<h4 style="margin:14px 0 6px;font-size:14px;color:var(--red)">🎩 Μυστικά κόλπα</h4>
+      <ul style="color:var(--txt-dim)">${e.tricks.map(s=>`<li>${s}</li>`).join('')}</ul>`:''}
+    ${e.videos?`<h4 style="margin:14px 0 6px;font-size:14px">🎬 Εκπαιδευτικά βίντεο</h4>
+      <div>${videoBtns(e.videos)}</div>
+      <div class="small" style="margin-top:6px">Ανοίγουν σε YouTube (χρειάζεται σύνδεση).</div>`:''}`;
+}
+
 /* ======================================================= */
 /*  PAGE: GAMES                                            */
 /* ======================================================= */
@@ -545,6 +560,7 @@ afterRender.games=()=>{
         </table>
         <h4 style="margin:12px 0 6px;font-size:14px;color:var(--red)">Στρατηγική επαγγελματία</h4>
         <ul>${g.strat.map(s=>`<li>${s}</li>`).join('')}</ul>
+        ${gameExtraHTML(g.id)}
       </div>`).join('');
   }
   tabs.querySelectorAll('button').forEach(b=>{
@@ -552,6 +568,41 @@ afterRender.games=()=>{
   });
   renderFam(0);
 };
+
+/* ======================================================= */
+/*  PAGE: TRICKS & VIDEOS (Κόλπα & Βίντεο)                */
+/* ======================================================= */
+routes.tricks=()=>`
+  <div class="page-head">
+    <div class="page-eyebrow">Πέρα από τους κανόνες</div>
+    <div class="page-title">🎩 Μυστικά Κόλπα & Βίντεο</div>
+    <div class="page-lead">Τα «μυστικά» των επαγγελματιών, θεαματικά trick shots, και βιβλιοθήκη εκπαιδευτικών βίντεο ανά τεχνική. Δες επίσης τα <b>βήμα-βήμα</b> & κόλπα κάθε παιχνιδιού στα <a onclick="__go('games')">Είδη Μπιλιάρδου</a>.</div>
+  </div>
+
+  ${(D.tricksLib||[]).map(sec=>`
+    <div class="card">
+      <h3>${sec.cat}</h3>
+      ${sec.items.map(it=>`<div style="padding:9px 0;border-bottom:1px solid var(--line)">
+        <b style="color:var(--txt)">${it[0]}</b>
+        <p style="margin:3px 0 0;color:var(--txt-dim);font-size:14px">${it[1]}</p>
+      </div>`).join('')}
+    </div>`).join('')}
+
+  <div class="card">
+    <h3>🎬 Βιβλιοθήκη Βίντεο (ανά τεχνική)</h3>
+    <p>Επιλεγμένες αναζητήσεις με κορυφαία tutorials. Ανοίγουν σε YouTube (χρειάζεται σύνδεση).</p>
+    ${(D.videoLib||[]).map(v=>`
+      <div style="margin-bottom:14px">
+        <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:var(--gold)">${v.cat}</div>
+        <div>${videoBtns(v.vids)}</div>
+      </div>`).join('')}
+  </div>
+
+  <div class="card" style="text-align:center">
+    <p>Θέλεις να τα δοκιμάσεις; Άνοιξε το διαδραστικό τραπέζι.</p>
+    <button class="btn" onclick="__go('play')">🕹️ Παίξε vs AI</button>
+    <button class="btn ghost" onclick="__go('trainer')">📐 Προπονητής Στόχευσης</button>
+  </div>`;
 
 /* ======================================================= */
 /*  PAGE: DRILLS                                           */
