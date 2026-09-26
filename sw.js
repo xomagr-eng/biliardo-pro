@@ -1,17 +1,17 @@
 /* ΜΠΙΛΙΑΡΔΟ PRO — Service Worker (offline cache) */
-const CACHE = 'biliardo-pro-v14';
+const CACHE = 'biliardo-pro-v15';
 const ASSETS = [
   './',
   './index.html',
-  './styles.css?v=14',
-  './data.js?v=14',
-  './game.js?v=14',
-  './app.js?v=14',
+  './styles.css?v=15',
+  './data.js?v=15',
+  './game.js?v=15',
+  './app.js?v=15',
   './manifest.webmanifest',
-  './icon-192.png',
-  './icon-512.png',
-  './icon-512-maskable.png',
-  './apple-touch-180.png'
+  './icon-192.png?v=2',
+  './icon-512.png?v=2',
+  './icon-512-maskable.png?v=2',
+  './apple-touch-180.png?v=2'
 ];
 
 self.addEventListener('install', (e) => {

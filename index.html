@@ -7,8 +7,8 @@
 <title>ΜΠΙΛΙΑΡΔΟ PRO — Ο Δάσκαλος</title>
 <meta name="description" content="Ολοκληρωμένος offline προπονητής μπιλιάρδου για όλα τα είδη: pool, snooker, καραμπόλα. Από αρχάριος σε επαγγελματία.">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/png" href="icon-192.png">
-<link rel="apple-touch-icon" href="apple-touch-180.png">
+<link rel="icon" type="image/png" href="icon-192.png?v=2">
+<link rel="apple-touch-icon" href="apple-touch-180.png?v=2">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -19,7 +19,7 @@
     try{ document.documentElement.classList.add('can-install'); if(window.__onInstallable) window.__onInstallable(); }catch(_){} });
   window.addEventListener('appinstalled',function(){ window.__bip=null; try{ document.documentElement.classList.remove('can-install'); }catch(_){} });
 </script>
-<link rel="stylesheet" href="styles.css?v=14">
+<link rel="stylesheet" href="styles.css?v=15">
 </head>
 <body>
 <div id="app">
@@ -57,9 +57,9 @@
 
 <div id="overlay"></div>
 
-<script src="data.js?v=14"></script>
-<script src="game.js?v=14"></script>
-<script src="app.js?v=14"></script>
+<script src="data.js?v=15"></script>
+<script src="game.js?v=15"></script>
+<script src="app.js?v=15"></script>
 <script>
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
