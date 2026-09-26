@@ -18,6 +18,7 @@ sections:[
   {id:"home",   grp:"", ico:"🏠", t:"Αρχική"},
   {id:"path",   grp:"", ico:"🗺️", t:"Roadmap Προόδου"},
   {id:"play",   grp:"", ico:"🕹️", t:"Παίξε vs AI"},
+  {id:"scoreboard", grp:"", ico:"🧮", t:"Μετρητής Σκορ"},
   {id:"funda",  grp:"ΘΕΜΕΛΙΑ", ico:"🧍", t:"Βασικές Αρχές"},
   {id:"aim",    grp:"ΘΕΜΕΛΙΑ", ico:"🎯", t:"Στόχευση"},
   {id:"trainer",grp:"ΘΕΜΕΛΙΑ", ico:"📐", t:"Προπονητής Στόχευσης"},

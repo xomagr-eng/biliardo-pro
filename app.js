@@ -228,6 +228,7 @@ let current="home";
 function go(id){
   if(!routes[id]) id="home";
   if(window.stopPoolGame) window.stopPoolGame();   // stop game loop when leaving
+  if(current==='scoreboard' && id!=='scoreboard' && typeof releaseWake==='function') releaseWake();
   current=id;
   setActiveNav(id);
   main.scrollTop=0; window.scrollTo(0,0);
@@ -1466,6 +1467,115 @@ afterRender.theme=()=>{
     document.getElementById('volSfxVal').textContent=vs.value+'%'; if(window.__poolInst) window.__poolInst.setSfxVol(store.volSfx); };
     vs.onchange=()=>{ try{ _diagSound('ball'); }catch(e){} }; }  // δοκιμαστικός ήχος στο τέλος
 };
+
+/* ======================================================= */
+/*  PAGE: SCOREBOARD (Μετρητής Σκορ για αληθινό τραπέζι)  */
+/* ======================================================= */
+const SBGAMES={
+ 'snooker':{label:'Snooker',kind:'points',quick:[1,2,3,4,5,6,7],foul:[4,5,6,7],brk:true},
+ 'carom':{label:'Καραμπόλα',kind:'points',quick:[1,2,3],innings:true,target:0},
+ 'straight':{label:'Straight Pool',kind:'points',quick:[1],minus:true,target:100},
+ 'generic':{label:'Πόντοι',kind:'points',quick:[1,5,10],minus:true},
+ '8ball':{label:'8-Ball',kind:'frames'},
+ '9ball':{label:'9-Ball',kind:'frames'},
+ '10ball':{label:'10-Ball',kind:'frames'}
+};
+function sbInit(){ if(!store.sb) store.sb={}; const s=store.sb;
+  if(!SBGAMES[s.game]) s.game='snooker';
+  if(!Array.isArray(s.names)) s.names=['Παίκτης 1','Παίκτης 2'];
+  if(!Array.isArray(s.scores)) s.scores=[0,0];
+  s.display=s.display||'digital'; if(!Array.isArray(s.hist)) s.hist=[]; s.brk=s.brk||0; s.innings=s.innings||0;
+  if(!Array.isArray(s.hi)) s.hi=[0,0]; s.target=s.target||0; return s; }
+function sbNum(n,color){ const s=store.sb;
+  if(s.display==='odo') return sbOdo(n);
+  if(s.display==='bead') return sbBead(n,color);
+  return sbLcd(n,color); }
+function sbLcd(n,color){ const str=String(n), ghost='8'.repeat(Math.max(str.length,1));
+  return `<div class="sb-lcd"><span class="g">${ghost}</span><span class="v" style="color:${color};text-shadow:0 0 14px ${color}">${str}</span></div>`; }
+function sbOdo(n){ return `<div class="sb-odo">${String(n).split('').map(d=>`<span class="odo-d">${d}</span>`).join('')}</div>`; }
+function sbBead(n,color){ const units=n%10, tens=Math.min(30,Math.floor(n/10));
+  const row=(cnt,total,lab)=>`<div class="bead-row"><span class="bead-lab">${lab}</span><div class="beads">${Array.from({length:total},(_,i)=>`<i class="bead ${i<cnt?'on':''}" style="${i<cnt?`background:${color};color:${color}`:''}"></i>`).join('')}</div></div>`;
+  return `<div class="sb-bead">${row(tens,15,'×10')}${row(units,10,'×1')}<div class="bead-total" style="color:${color}">${n}</div></div>`; }
+function sbControls(pi,s,cfg){
+  if(cfg.kind==='frames') return `<button class="btn sb-big" onclick="__sbWin(${pi})">🏆 +1 Παρτίδα</button>`;
+  let h=`<div class="sb-quick">`;
+  (cfg.quick||[]).forEach(q=> h+=`<button class="sb-qbtn" onclick="__sbAdd(${pi},${q})">+${q}</button>`);
+  if(cfg.minus) h+=`<button class="sb-qbtn minus" onclick="__sbAdd(${pi},-1)">−1</button>`;
+  h+=`</div>`;
+  if(cfg.foul){ h+=`<div class="sb-foul"><span>Φάουλ →αντίπαλος:</span>`; cfg.foul.forEach(f=> h+=`<button class="sb-fbtn" onclick="__sbFoul(${pi},${f})">+${f}</button>`); h+=`</div>`; }
+  return h;
+}
+routes.scoreboard=()=>{
+  const s=sbInit(), cfg=SBGAMES[s.game];
+  const colA=store.accent||'#e63946', colB='#f2b34b';
+  const tgt=s.target||cfg.target||0;
+  const avg=pi=> s.innings? (s.scores[pi]/s.innings).toFixed(3):'0.000';
+  const panel=(pi,col)=>{
+    const win = tgt>0 && s.scores[pi]>=tgt;
+    return `<div class="sb-panel ${win?'sb-win':''}" style="border-top:4px solid ${col}">
+      ${win?'<div class="sb-winbadge">🏆 ΝΙΚΗΤΗΣ</div>':''}
+      <input class="sb-name" value="${(s.names[pi]||'').replace(/"/g,'&quot;')}" oninput="__sbName(${pi},this.value)" maxlength="18">
+      <div class="sb-score">${sbNum(s.scores[pi],col)}</div>
+      ${cfg.brk? `<div class="sb-brk">Break: <b style="color:${col}">${s.brkP===pi?s.brk:0}</b> · Hi: ${s.hi[pi]||0}</div>`:''}
+      ${cfg.innings? `<div class="sb-brk">Μέσος όρος: <b style="color:${col}">${avg(pi)}</b></div>`:''}
+      ${sbControls(pi,s,cfg)}
+    </div>`;
+  };
+  return `
+  <div class="page-head">
+    <div class="page-eyebrow">Για αληθινό τραπέζι</div>
+    <div class="page-title">🧮 Μετρητής Σκορ</div>
+    <div class="page-lead">Κράτα σκορ όσο παίζεις σε πραγματικό μπιλιάρδο — για όλα τα είδη. Διάλεξε <b>ψηφιακή</b>, <b>μηχανική</b> ή <b>«χάντρες»</b> εμφάνιση. <b>Γύρισε το κινητό οριζόντια</b> & πάτα ⛶ για μεγάλη οθόνη. Η οθόνη μένει αναμμένη.</div>
+  </div>
+  <div class="sb-bar"><div class="seg" style="margin:0;flex-wrap:wrap">
+    ${Object.entries(SBGAMES).map(([k,g])=>`<button class="${s.game===k?'on':''}" onclick="__sbGame('${k}')">${g.label}</button>`).join('')}
+  </div></div>
+  <div class="sb-bar">
+    <div class="seg" style="margin:0">
+      <button class="${s.display==='digital'?'on':''}" onclick="__sbDisp('digital')">🔢 Ψηφιακό</button>
+      <button class="${s.display==='odo'?'on':''}" onclick="__sbDisp('odo')">🎰 Μηχανικό</button>
+      <button class="${s.display==='bead'?'on':''}" onclick="__sbDisp('bead')">🧮 Χάντρες</button>
+    </div>
+    ${(cfg.kind==='frames'||cfg.target!=null)? `<label class="sb-target">🎯 <input type="number" min="0" value="${tgt}" onchange="__sbTarget(this.value)"> ${cfg.kind==='frames'?'νίκες':'πόντοι'}</label>`:''}
+    <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn ghost sm" onclick="__sbUndo()">↶ Αναίρεση</button>
+      ${cfg.innings? `<button class="btn ghost sm" onclick="__sbEndTurn()">▸ Inning (${s.innings})</button>`:''}
+      ${cfg.brk? `<button class="btn ghost sm" onclick="__sbEndTurn()">↺ Τέλος βολής</button>`:''}
+      <button class="btn ghost sm" onclick="__sbFull()">⛶ Πλήρης</button>
+      <button class="btn sm" onclick="__sbReset()">🔄 Μηδέν</button>
+    </div>
+  </div>
+  <div class="sb-grid">${panel(0,colA)}${panel(1,colB)}</div>`;
+};
+afterRender.scoreboard=()=>{ requestWake(); };
+function _sbSnap(){ const s=store.sb; s.hist.push([s.scores[0],s.scores[1],s.brk,s.brkP,s.innings]); if(s.hist.length>60) s.hist.shift(); }
+function _sbTick(){ try{ _diagSound('ball'); }catch(e){} }
+function _sbCheckWin(){ const s=store.sb, cfg=SBGAMES[s.game], tgt=s.target||cfg.target||0;
+  if(tgt<=0) return; [0,1].forEach(pi=>{ if(s.scores[pi]>=tgt && s.wonBy!==pi+1){ s.wonBy=pi+1; save(); celebrate('🏆 '+(s.names[pi]||('Παίκτης '+(pi+1)))+' κέρδισε!'); } }); }
+window.__sbAdd=(pi,pts)=>{ const s=store.sb, cfg=SBGAMES[s.game]; _sbSnap();
+  s.scores[pi]=Math.max(0,s.scores[pi]+pts);
+  if(cfg.brk && pts>0){ if(s.brkP===pi) s.brk+=pts; else { s.brk=pts; s.brkP=pi; } s.hi[pi]=Math.max(s.hi[pi]||0,s.brk); }
+  s.wonBy=0; save(); _sbTick(); go('scoreboard'); _sbCheckWin(); };
+window.__sbFoul=(pi,f)=>{ const s=store.sb, opp=pi?0:1; _sbSnap(); s.scores[opp]+=f; s.brk=0; s.brkP=null; s.wonBy=0; save(); _sbTick(); go('scoreboard'); _sbCheckWin(); };
+window.__sbWin=(pi)=>{ const s=store.sb; _sbSnap(); s.scores[pi]++; s.wonBy=0; save(); _sbTick(); go('scoreboard'); _sbCheckWin(); };
+window.__sbEndTurn=()=>{ const s=store.sb, cfg=SBGAMES[s.game]; s.brk=0; s.brkP=null; if(cfg.innings) s.innings++; save(); go('scoreboard'); };
+window.__sbUndo=()=>{ const s=store.sb; const h=s.hist.pop(); if(h){ s.scores=[h[0],h[1]]; s.brk=h[2]; s.brkP=h[3]; s.innings=h[4]; s.wonBy=0; save(); go('scoreboard'); } };
+window.__sbReset=()=>{ if(!confirm('Μηδενισμός σκορ;')) return; const s=store.sb; s.scores=[0,0]; s.brk=0; s.brkP=null; s.innings=0; s.hist=[]; s.hi=[0,0]; s.wonBy=0; save(); go('scoreboard'); };
+window.__sbGame=(g)=>{ const s=store.sb; s.game=g; s.scores=[0,0]; s.brk=0; s.brkP=null; s.innings=0; s.hist=[]; s.hi=[0,0]; s.wonBy=0; s.target=0; save(); go('scoreboard'); };
+window.__sbDisp=(d)=>{ store.sb.display=d; save(); go('scoreboard'); };
+window.__sbName=(pi,v)=>{ store.sb.names[pi]=v; save(); };
+window.__sbTarget=(v)=>{ store.sb.target=Math.max(0,parseInt(v)||0); save(); go('scoreboard'); };
+window.__sbFull=()=>sbFullscreen();
+function sbFullscreen(){ try{ const el=document.documentElement;
+  if(!document.fullscreenElement){ (el.requestFullscreen||el.webkitRequestFullscreen||function(){}).call(el);
+    if(screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(()=>{}); }
+  else { (document.exitFullscreen||document.webkitExitFullscreen||function(){}).call(document); }
+}catch(e){} }
+/* Wake Lock — κράτα την οθόνη αναμμένη στον μετρητή */
+let _wake=null;
+async function requestWake(){ try{ if('wakeLock' in navigator && !_wake){ _wake=await navigator.wakeLock.request('screen'); _wake.addEventListener('release',()=>{_wake=null;}); } }catch(e){} }
+function releaseWake(){ try{ if(_wake){ _wake.release(); _wake=null; } }catch(e){} }
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible' && current==='scoreboard') requestWake(); });
 
 /* ---------- Toast ---------- */
 let toastEl=null,toastT=null;

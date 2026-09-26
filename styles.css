@@ -266,6 +266,60 @@ table.rules td:first-child{color:var(--txt);font-weight:700;white-space:nowrap}
 .swatch.on{border-color:#fff;box-shadow:0 0 0 3px var(--red-soft)}
 .swatch.on::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:18px;text-shadow:0 1px 4px rgba(0,0,0,.7)}
 
+/* ---------- Μετρητής Σκορ ---------- */
+.sb-bar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.sb-target{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--txt-dim)}
+.sb-target input{background:#0a0c12;border:1px solid var(--line2);color:var(--txt);padding:6px 8px;border-radius:8px;width:66px}
+.sb-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.sb-panel{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);border-radius:16px;padding:16px 14px;text-align:center;box-shadow:var(--shadow)}
+.sb-panel.sb-win{outline:3px solid var(--ok);outline-offset:-3px}
+.sb-winbadge{display:inline-block;background:var(--ok);color:#06110b;font-weight:800;padding:3px 12px;border-radius:20px;margin-bottom:8px;font-size:13px}
+.sb-name{width:100%;background:transparent;border:none;border-bottom:1px dashed var(--line2);color:var(--txt);font-size:18px;font-weight:800;text-align:center;padding:4px;margin-bottom:12px;outline:none}
+.sb-name:focus{border-color:var(--red)}
+.sb-score{min-height:100px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.sb-brk{font-size:13px;color:var(--txt-mut);margin-bottom:10px}
+.sb-quick{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:8px}
+.sb-qbtn{background:var(--panel2);border:1px solid var(--line2);color:var(--txt);font-weight:800;font-size:17px;min-width:46px;padding:11px;border-radius:10px;cursor:pointer;transition:.12s}
+.sb-qbtn:hover{background:var(--red-soft);border-color:var(--red)}
+.sb-qbtn:active{transform:scale(.94)}
+.sb-qbtn.minus{color:var(--txt-mut)}
+.sb-foul{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;align-items:center;font-size:12px;color:var(--txt-mut)}
+.sb-fbtn{background:transparent;border:1px solid var(--line2);color:var(--gold);padding:5px 9px;border-radius:8px;cursor:pointer;font-weight:700}
+.sb-fbtn:hover{background:rgba(242,179,75,.14)}
+.sb-big{width:100%;font-size:16px;padding:16px}
+/* LCD ψηφιακό */
+.sb-lcd{position:relative;font-family:'Courier New',monospace;font-weight:800;font-size:66px;line-height:1;letter-spacing:5px}
+.sb-lcd .g{color:rgba(255,255,255,.06)}
+.sb-lcd .v{position:absolute;left:0;top:0;right:0}
+/* Μηχανικό odometer */
+.sb-odo{display:flex;gap:4px}
+.sb-odo .odo-d{font-family:'Courier New',monospace;font-weight:800;font-size:54px;line-height:1;width:46px;height:74px;display:flex;align-items:center;justify-content:center;color:#fff;border-radius:6px;border:1px solid #000;position:relative;background:linear-gradient(180deg,#05070a,#3a4152 46%,#3a4152 54%,#05070a);box-shadow:inset 0 0 12px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.05)}
+.sb-odo .odo-d::after{content:"";position:absolute;left:2px;right:2px;top:50%;height:1px;background:rgba(0,0,0,.6)}
+/* Χάντρες abacus */
+.sb-bead{display:flex;flex-direction:column;gap:8px;align-items:center}
+.bead-row{display:flex;align-items:center;gap:8px}
+.bead-lab{font-size:11px;color:var(--txt-mut);width:26px;text-align:right}
+.beads{display:flex;gap:3px;background:#0a0c12;padding:5px 7px;border-radius:20px;border:1px solid var(--line2)}
+.bead{width:12px;height:12px;border-radius:50%;background:var(--line2);display:inline-block}
+.bead.on{box-shadow:0 0 7px currentColor}
+.bead-total{font-size:36px;font-weight:900;margin-top:2px}
+@media(max-width:520px){ .sb-lcd{font-size:52px} .sb-odo .odo-d{font-size:42px;width:38px;height:60px} }
+/* Landscape — μεγάλη οθόνη */
+@media (orientation:landscape) and (max-height:560px){
+  #app{flex-direction:column}
+  #sidebar{transform:translateX(-100%)}
+  #topbar{display:flex}
+  #main{margin-left:0;padding:8px 16px 20px;max-width:none;width:100%}
+  .page-lead,.page-eyebrow{display:none}
+  .page-title{font-size:20px;margin:0 0 8px}
+  .sb-score{min-height:0;margin-bottom:8px}
+  .sb-lcd{font-size:104px} .sb-lcd .v{right:0}
+  .sb-odo .odo-d{font-size:82px;width:66px;height:108px}
+  .bead-total{font-size:60px}
+  .sb-qbtn{font-size:20px;min-width:56px;padding:13px}
+  .sb-name{font-size:22px}
+}
+
 .small{font-size:12.5px;color:var(--txt-mut)}
 .src-list{font-size:12px;color:var(--txt-mut);margin-top:10px}
 .src-list a{color:var(--txt-dim)}
@@ -278,10 +332,11 @@ table.rules td:first-child{color:var(--txt);font-weight:700;white-space:nowrap}
   .trainer-wrap{grid-template-columns:1fr}
 }
 @media(max-width:760px){
+  #app{flex-direction:column}
   #sidebar{transform:translateX(-100%)}
   #sidebar.open{transform:translateX(0)}
   #topbar{display:flex}
-  #main{margin-left:0;padding:20px 16px 90px}
+  #main{margin-left:0;padding:20px 16px 90px;width:100%}
   .page-title{font-size:24px}
   .g2,.g3,.g4{grid-template-columns:1fr}
   .hero::after{font-size:120px}
