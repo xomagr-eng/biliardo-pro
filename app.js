@@ -1489,7 +1489,14 @@ function sbInit(){ if(!store.sb) store.sb={}; const s=store.sb;
 function sbNum(n,color){ const s=store.sb;
   if(s.display==='odo') return sbOdo(n);
   if(s.display==='bead') return sbBead(n,color);
+  if(s.display==='wood') return sbWood(n,color);
   return sbLcd(n,color); }
+function sbWood(n,color){ const tens=Math.min(15,Math.floor(n/10)), units=n%10;
+  const wire=(cnt,total)=>{ let on='',off='';
+    for(let i=0;i<total;i++){ if(i<cnt) on+='<i class="wbead on"></i>'; else off+='<i class="wbead"></i>'; }
+    return `<div class="wwire"><span class="wrod"></span><span class="wgrp">${on}</span><span class="wgrp">${off}</span></div>`; };
+  return `<div class="sb-wood"><div class="wood-inner">${wire(tens,15)}${wire(units,10)}</div>
+    <div class="wood-total" style="color:${color}">${n}</div></div>`; }
 function sbLcd(n,color){ const str=String(n), ghost='8'.repeat(Math.max(str.length,1));
   return `<div class="sb-lcd"><span class="g">${ghost}</span><span class="v" style="color:${color};text-shadow:0 0 14px ${color}">${str}</span></div>`; }
 function sbOdo(n){ return `<div class="sb-odo">${String(n).split('').map(d=>`<span class="odo-d">${d}</span>`).join('')}</div>`; }
@@ -1535,6 +1542,7 @@ routes.scoreboard=()=>{
       <button class="${s.display==='digital'?'on':''}" onclick="__sbDisp('digital')">🔢 Ψηφιακό</button>
       <button class="${s.display==='odo'?'on':''}" onclick="__sbDisp('odo')">🎰 Μηχανικό</button>
       <button class="${s.display==='bead'?'on':''}" onclick="__sbDisp('bead')">🧮 Χάντρες</button>
+      <button class="${s.display==='wood'?'on':''}" onclick="__sbDisp('wood')">🪵 Ξύλινο</button>
     </div>
     ${(cfg.kind==='frames'||cfg.target!=null)? `<label class="sb-target">🎯 <input type="number" min="0" value="${tgt}" onchange="__sbTarget(this.value)"> ${cfg.kind==='frames'?'νίκες':'πόντοι'}</label>`:''}
     <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">

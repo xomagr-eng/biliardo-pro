@@ -303,6 +303,24 @@ table.rules td:first-child{color:var(--txt);font-weight:700;white-space:nowrap}
 .bead{width:12px;height:12px;border-radius:50%;background:var(--line2);display:inline-block}
 .bead.on{box-shadow:0 0 7px currentColor}
 .bead-total{font-size:36px;font-weight:900;margin-top:2px}
+/* Ξύλινος μετρητής (καφενείου) */
+.sb-wood{display:inline-block;padding:14px 16px 10px;border-radius:26px 26px 12px 12px;
+  background:
+    repeating-linear-gradient(180deg, rgba(0,0,0,.05) 0 3px, rgba(255,255,255,.03) 3px 6px),
+    linear-gradient(180deg,#a9743a,#7c4f22);
+  border:3px solid #5c3a18; box-shadow:0 8px 22px rgba(0,0,0,.5), inset 0 2px 4px rgba(255,255,255,.18), inset 0 -6px 10px rgba(0,0,0,.35)}
+.wood-inner{background:linear-gradient(180deg,#4a2f14,#5c3c1b);border-radius:10px;padding:9px 12px;
+  box-shadow:inset 0 3px 8px rgba(0,0,0,.6); display:flex;flex-direction:column;gap:9px}
+.wwire{position:relative;display:flex;justify-content:space-between;align-items:center;min-width:210px;height:20px}
+.wrod{position:absolute;left:2px;right:2px;top:50%;height:3px;transform:translateY(-50%);border-radius:2px;
+  background:linear-gradient(180deg,#e9dcb6,#9c8a5a);box-shadow:0 1px 1px rgba(0,0,0,.5)}
+.wgrp{position:relative;display:flex;gap:0}
+.wbead{width:18px;height:18px;border-radius:50%;margin:0 -1px;
+  background:radial-gradient(circle at 34% 30%, #f2d79c, #c89345 52%, #7f5320 100%);
+  box-shadow:0 2px 3px rgba(0,0,0,.5), inset -2px -2px 4px rgba(0,0,0,.35), inset 2px 2px 3px rgba(255,255,255,.35)}
+.wbead.on{background:radial-gradient(circle at 34% 30%, #7a7a7a, #262626 52%, #000 100%);
+  box-shadow:0 2px 3px rgba(0,0,0,.6), inset -2px -2px 4px rgba(0,0,0,.6), inset 2px 2px 3px rgba(255,255,255,.25)}
+.wood-total{font-size:32px;font-weight:900;text-align:center;margin-top:8px;text-shadow:0 1px 2px rgba(0,0,0,.5)}
 @media(max-width:520px){ .sb-lcd{font-size:52px} .sb-odo .odo-d{font-size:42px;width:38px;height:60px} }
 /* Landscape — μεγάλη οθόνη */
 @media (orientation:landscape) and (max-height:560px){
@@ -316,6 +334,7 @@ table.rules td:first-child{color:var(--txt);font-weight:700;white-space:nowrap}
   .sb-lcd{font-size:104px} .sb-lcd .v{right:0}
   .sb-odo .odo-d{font-size:82px;width:66px;height:108px}
   .bead-total{font-size:60px}
+  .wbead{width:26px;height:26px} .wwire{min-width:340px;height:28px} .wood-total{font-size:52px}
   .sb-qbtn{font-size:20px;min-width:56px;padding:13px}
   .sb-name{font-size:22px}
 }
