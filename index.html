@@ -19,7 +19,7 @@
     try{ document.documentElement.classList.add('can-install'); if(window.__onInstallable) window.__onInstallable(); }catch(_){} });
   window.addEventListener('appinstalled',function(){ window.__bip=null; try{ document.documentElement.classList.remove('can-install'); }catch(_){} });
 </script>
-<link rel="stylesheet" href="styles.css?v=11">
+<link rel="stylesheet" href="styles.css?v=12">
 </head>
 <body>
 <div id="app">
@@ -31,6 +31,10 @@
         <div class="brand-title">ΜΠΙΛΙΑΡΔΟ<span>PRO</span></div>
         <div class="brand-sub">Ο Δάσκαλος</div>
       </div>
+    </div>
+    <div class="side-search">
+      <input id="searchInput" type="text" placeholder="🔍 Αναζήτηση..." autocomplete="off">
+      <div id="searchResults" class="search-results"></div>
     </div>
     <nav id="nav"></nav>
     <div class="side-foot">
@@ -53,9 +57,9 @@
 
 <div id="overlay"></div>
 
-<script src="data.js?v=11"></script>
-<script src="game.js?v=11"></script>
-<script src="app.js?v=11"></script>
+<script src="data.js?v=12"></script>
+<script src="game.js?v=12"></script>
+<script src="app.js?v=12"></script>
 <script>
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });

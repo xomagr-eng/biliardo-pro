@@ -6,11 +6,97 @@ const LS = "billiardpro_v1";
 /* ---------- State ---------- */
 let store = load();
 function load(){
-  const def={done:[],drills:{},metro:60,glo:"",puzzles:[],aiWins:0,accent:"#e63946",felt:"#12508a",diagSpeed:1,diagSound:true,gameSound:true,music:false,volMusic:0.6,volSfx:0.85};
+  const def={done:[],drills:{},metro:60,glo:"",puzzles:[],aiWins:0,accent:"#e63946",felt:"#12508a",diagSpeed:1,diagSound:true,gameSound:true,music:false,volMusic:0.6,volSfx:0.85,streak:0,bestStreak:0,lastActive:"",daily:null};
   try{ return Object.assign(def, JSON.parse(localStorage.getItem(LS)||"{}")); }
   catch(e){ return def; }
 }
 function save(){ try{ localStorage.setItem(LS, JSON.stringify(store)); }catch(e){} }
+
+/* ---------- Streak & Καθημερινή Προπόνηση ---------- */
+function dayKey(off){ const d=new Date(); if(off) d.setDate(d.getDate()+off); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function markActive(){
+  const t=dayKey(0); if(store.lastActive===t) return;
+  store.streak = (store.lastActive===dayKey(-1)) ? (store.streak||0)+1 : 1;
+  store.lastActive=t; store.bestStreak=Math.max(store.bestStreak||0, store.streak);
+  save(); updateSideProgress();
+}
+function dailyHash(){ const s=dayKey(0); let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return h; }
+function dailyPlan(){
+  if(!store.daily || store.daily.day!==dayKey(0)) store.daily={day:dayKey(0), items:{}};
+  const h=dailyHash();
+  const undoneL=allLessons().filter(l=>!store.done.includes(l.id)); const L=undoneL.length?undoneL:allLessons();
+  const unsolvedP=D.puzzles.filter(p=>!store.puzzles.includes(p.id)); const P=unsolvedP.length?unsolvedP:D.puzzles;
+  return { lesson:L[h%L.length], drill:D.drills[(h>>3)%D.drills.length], puzz:P[(h>>6)%P.length] };
+}
+function dailyCardHTML(){
+  const p=dailyPlan(), it=store.daily.items||{};
+  const items=[
+    {k:'lesson', ico:'📘', t:'Μάθημα: '+p.lesson.t, go:sectionOf(p.lesson.id)},
+    {k:'drill',  ico:'🏋️', t:'Άσκηση: '+p.drill.t, go:'drills'},
+    {k:'puzzle', ico:'🧩', t:'Puzzle: '+p.puzz.t, go:'puzzles'},
+    {k:'play',   ico:'🕹️', t:'Παίξε μία παρτίδα vs AI', go:'play'}
+  ];
+  const doneN=items.filter(x=>it[x.k]).length;
+  return `<div class="card" style="border:1px solid var(--red-dk);background:linear-gradient(180deg,var(--red-soft),var(--bg2))">
+    <h3>🔥 Προπόνηση της Ημέρας <span class="tag">${doneN}/4</span></h3>
+    <p>Μια μικρή καθημερινή ρουτίνα για σταθερή πρόοδο — κράτα ζωντανό το streak σου!</p>
+    <div class="progress-mini" style="margin-bottom:12px"><div class="progress-mini-bar" style="width:${doneN/4*100}%"></div></div>
+    ${items.map(x=>`<div class="lesson ${it[x.k]?'done':''}" style="cursor:default">
+      <div class="chk" style="cursor:pointer" title="Σημείωσε ως έγινε" onclick="event.stopPropagation();__dailyMark('${x.k}')">✓</div>
+      <div class="l-body" style="cursor:pointer" onclick="__go('${x.go}')"><h4 style="white-space:normal">${x.ico} ${x.t}</h4></div>
+      <div class="l-meta" style="cursor:pointer" onclick="__go('${x.go}')">▶</div>
+    </div>`).join('')}
+    ${doneN===4?`<div class="note ok" style="margin-top:10px"><b>Μπράβο! 🎉</b> Ολοκλήρωσες τη σημερινή προπόνηση. 🔥 Streak: ${store.streak||1} ${(store.streak||1)===1?'ημέρα':'ημέρες'}.</div>`:''}
+  </div>`;
+}
+function dailyMark(k){
+  if(!store.daily || store.daily.day!==dayKey(0)) store.daily={day:dayKey(0),items:{}};
+  store.daily.items[k]=!store.daily.items[k]; save(); markActive();
+  const all=['lesson','drill','puzzle','play'].every(x=>store.daily.items[x]);
+  if(all && !store.daily.celebrated){ store.daily.celebrated=true; save(); celebrate("🎉 Ολοκλήρωσες την Προπόνηση της Ημέρας! 🔥 Streak: "+(store.streak||1)); }
+  if(current==='home') go('home');
+}
+window.__dailyMark=dailyMark;
+function celebrate(msg){ toast(msg); confetti(); }
+function confetti(){
+  const colors=['#e63946','#f2b34b','#3ec98a','#2f7fe0','#ffffff','#8b5cf6','#f97316'];
+  for(let i=0;i<30;i++){ const el=document.createElement('div'); el.className='confetti';
+    el.style.left=Math.random()*100+'vw'; el.style.background=colors[i%colors.length];
+    el.style.animationDelay=(Math.random()*0.35).toFixed(2)+'s';
+    el.style.setProperty('--rot', (Math.random()*360)+'deg');
+    document.body.appendChild(el); setTimeout(()=>el.remove(),2400);
+  }
+}
+
+/* ---------- Γενική αναζήτηση ---------- */
+const _strip=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+let SIDX=null;
+function buildIndex(){ const idx=[];
+  Object.entries(D.lessons).forEach(([sec,arr])=>arr.forEach(l=>idx.push({t:l.t, sub:'Μάθημα', sec})));
+  D.drills.forEach(d=>idx.push({t:d.t, sub:'Άσκηση', sec:'drills'}));
+  D.games.forEach(g=>idx.push({t:g.t, sub:'Παιχνίδι', sec:'games'}));
+  D.glossary.forEach(g=>idx.push({t:g.t+' · '+g.en, sub:'Όρος', sec:'glossary'}));
+  (D.tricksLib||[]).forEach(s=>s.items.forEach(it=>idx.push({t:it[0], sub:'Κόλπο', sec:'tricks'})));
+  D.sections.forEach(s=>idx.push({t:s.t, sub:'Ενότητα', sec:s.id}));
+  return idx;
+}
+function runSearch(q){
+  const el=document.getElementById('searchResults'); if(!el) return;
+  const nq=_strip(q);
+  if(nq.length<2){ el.style.display='none'; el.innerHTML=''; return; }
+  if(!SIDX) SIDX=buildIndex();
+  const res=SIDX.filter(x=>_strip(x.t).includes(nq)).slice(0,10);
+  el.style.display='block';
+  el.innerHTML = res.length ? res.map(r=>`<div class="sr-item" data-sec="${r.sec}"><span>${r.t}</span><em>${r.sub}</em></div>`).join('')
+    : '<div class="sr-empty">Καμία αντιστοιχία</div>';
+  el.querySelectorAll('.sr-item').forEach(it=>it.onclick=()=>{ const inp=document.getElementById('searchInput'); if(inp) inp.value=''; el.style.display='none'; go(it.dataset.sec); closeSidebar(); });
+}
+function buildSearch(){ const inp=document.getElementById('searchInput'); if(!inp) return;
+  inp.oninput=()=>runSearch(inp.value);
+  inp.onkeydown=e=>{ if(e.key==='Escape'){ inp.value=''; runSearch(''); inp.blur(); } };
+  document.addEventListener('click',e=>{ const box=document.getElementById('searchResults'); if(!box) return;
+    if(!inp.contains(e.target) && !box.contains(e.target)) box.style.display='none'; });
+}
 
 /* ---------- Theme / colors ---------- */
 const ACCENTS=[{n:"Κόκκινο",c:"#e63946"},{n:"Μπλε",c:"#2f7fe0"},{n:"Χρυσό",c:"#f2b34b"},{n:"Πράσινο",c:"#35b877"},{n:"Μωβ",c:"#8b5cf6"},{n:"Τιρκουάζ",c:"#14b8a6"},{n:"Πορτοκαλί",c:"#f97316"},{n:"Ροζ",c:"#ec4899"}];
@@ -132,7 +218,7 @@ function updateSideProgress(){
   document.getElementById('sideProgress').style.width = pct()+"%";
   document.getElementById('sideProgressTxt').textContent = pct()+"% ολοκληρωμένο ("+doneCount()+"/"+totalLessons+")";
   const lv=level();
-  document.getElementById('sideLevel').textContent = "Επίπεδο: "+lv.n;
+  document.getElementById('sideLevel').innerHTML = "Επίπεδο: "+lv.n + (store.streak?` · <span style="color:var(--gold)">🔥${store.streak}</span>`:'');
   document.getElementById('topLevel').textContent = lv.n;
 }
 
@@ -173,7 +259,10 @@ routes.home=()=>{
     <p>Πλήρης εκπαίδευση για <b>όλα τα είδη</b> — pool (8/9/10-ball, straight pool), snooker, καραμπόλα (τρεις μπάντες), ρωσικό. Από τη στάση και το χτύπημα, μέχρι τα συστήματα διαμαντιών και το νοητικό παιχνίδι. Μάθε, εξασκήσου με μετρήσιμες ασκήσεις, και παρακολούθησε την πρόοδό σου.</p>
     <button class="btn" onclick="__go('${nextLesson?sectionOf(nextLesson.id):'funda'}')">▶ Συνέχισε την εκπαίδευση</button>
     <button class="btn ghost" onclick="__go('trainer')">📐 Προπονητής Στόχευσης</button>
+    <div style="margin-top:14px;font-weight:800;color:var(--gold)">🔥 Streak: ${store.streak||0} ${(store.streak||0)===1?'ημέρα':'ημέρες'}${store.bestStreak>1?` · ρεκόρ ${store.bestStreak}`:''}</div>
   </div>
+
+  ${dailyCardHTML()}
 
   <div class="stat-row">
     <div class="stat"><div class="n">${lv.i}/5</div><div class="l">Επίπεδο</div></div>
@@ -1399,6 +1488,8 @@ window.__go=go;
 applyTheme();
 setupMusic();
 buildNav();
+buildSearch();
+markActive();
 updateSideProgress();
 const initial=(location.hash||'').replace('#','');
 go(routes[initial]?initial:'home');
